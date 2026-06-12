@@ -31,45 +31,33 @@ func main() {
 		os.Getenv("DB_SSLMODE"),
 	)
 
-	// 3. Connect to PostgreSQL
 	ctx := context.Background()
 	dbPool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		log.Fatalf("❌ Unable to connect to database: %v\n", err)
+		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
-	defer dbPool.Close() // Ensures the connection closes when the server shuts down
-	log.Println("✅ Successfully connected to the PostgreSQL database!")
+	defer dbPool.Close()
 
-	// 4. Initialize your generated sqlc queries
-	// Now your sqlc functions have a live database connection to use!
 	queries := db.New(dbPool)
 	_ = queries
-	// 5. Setup Routes (Connecting the Waiters to the Front Door)
-	// Example: http.HandleFunc("/api/register", controllers.RegisterHandler(queries))
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Game server is running cleanly!"))
-	})
 
 	http.HandleFunc("/api/register", controllers.RegisterPlayer(queries))
 	http.HandleFunc("/api/login", controllers.LoginPlayer(queries))
 
 	http.HandleFunc("/api/village", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		// Because the Bouncer let them through, we can safely pull their ID directly from the context!
 		playerID := r.Context().Value(middleware.PlayerIDKey).(string)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(fmt.Sprintf(`{"message": "Welcome to your village! Your secure ID is %s"}`, playerID)))
 	}))
 
-	// 6. Start the Server
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("🚀 Starting game server on port %s...\n", port)
 	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {
-		log.Fatalf("❌ Server crashed: %v\n", err)
+		log.Fatalf("Server crashed: %v\n", err)
 	}
 }
