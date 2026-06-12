@@ -12,7 +12,7 @@ import (
 
 	"github.com/gaurangi/mvc_assignment/controllers"
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
-	"github.com/gaurangi/mvc_assignment/middleware"
+	_"github.com/gaurangi/mvc_assignment/middleware"
 )
 
 func main() {
@@ -48,6 +48,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	log.Printf("Server started successfully on port %s\n", port)
 
 	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {
