@@ -12,7 +12,7 @@ import (
 
 	"github.com/gaurangi/mvc_assignment/controllers"
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
-	_"github.com/gaurangi/mvc_assignment/middleware"
+	"github.com/gaurangi/mvc_assignment/middleware"
 )
 
 func main() {
@@ -43,6 +43,7 @@ func main() {
 
 	http.HandleFunc("/api/register", controllers.RegisterPlayer(queries))
 	http.HandleFunc("/api/login", controllers.LoginPlayer(queries))
+	http.HandleFunc("/api/village", middleware.RequireAuth(controllers.GetVillage(queries)))
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
