@@ -8,7 +8,7 @@ package db
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createPlayerAuth = `-- name: CreatePlayerAuth :one
@@ -18,18 +18,18 @@ RETURNING player_id, username
 `
 
 type CreatePlayerAuthParams struct {
-	PlayerID     uuid.UUID
+	PlayerID     pgtype.UUID
 	Username     string
 	PasswordHash string
 }
 
 type CreatePlayerAuthRow struct {
-	PlayerID uuid.UUID
+	PlayerID pgtype.UUID
 	Username string
 }
 
 func (q *Queries) CreatePlayerAuth(ctx context.Context, arg CreatePlayerAuthParams) (CreatePlayerAuthRow, error) {
-	row := q.db.QueryRowContext(ctx, createPlayerAuth, arg.PlayerID, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createPlayerAuth, arg.PlayerID, arg.Username, arg.PasswordHash)
 	var i CreatePlayerAuthRow
 	err := row.Scan(&i.PlayerID, &i.Username)
 	return i, err
@@ -42,14 +42,14 @@ RETURNING id, village_level, gold_coins, elixir
 `
 
 type CreatePlayerProfileRow struct {
-	ID           uuid.UUID
+	ID           pgtype.UUID
 	VillageLevel int32
 	GoldCoins    int32
 	Elixir       int32
 }
 
-func (q *Queries) CreatePlayerProfile(ctx context.Context, id uuid.UUID) (CreatePlayerProfileRow, error) {
-	row := q.db.QueryRowContext(ctx, createPlayerProfile, id)
+func (q *Queries) CreatePlayerProfile(ctx context.Context, id pgtype.UUID) (CreatePlayerProfileRow, error) {
+	row := q.db.QueryRow(ctx, createPlayerProfile, id)
 	var i CreatePlayerProfileRow
 	err := row.Scan(
 		&i.ID,
@@ -67,7 +67,7 @@ WHERE username = $1 LIMIT 1
 `
 
 func (q *Queries) GetAuthByUsername(ctx context.Context, username string) (Authorisation, error) {
-	row := q.db.QueryRowContext(ctx, getAuthByUsername, username)
+	row := q.db.QueryRow(ctx, getAuthByUsername, username)
 	var i Authorisation
 	err := row.Scan(&i.PlayerID, &i.Username, &i.PasswordHash)
 	return i, err

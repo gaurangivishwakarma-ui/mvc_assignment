@@ -5,13 +5,10 @@
 package db
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ResourceType string
@@ -62,21 +59,21 @@ type ArmyCampBuilding struct {
 }
 
 type Authorisation struct {
-	PlayerID     uuid.UUID
+	PlayerID     pgtype.UUID
 	Username     string
 	PasswordHash string
 }
 
 type Battle struct {
-	ID               uuid.UUID
-	AttackerID       uuid.UUID
-	DefenderID       uuid.UUID
-	IsAttackerWinner sql.NullBool
+	ID               pgtype.UUID
+	AttackerID       pgtype.UUID
+	DefenderID       pgtype.UUID
+	IsAttackerWinner pgtype.Bool
 	GoldStolen       int32
 	ElixirStolen     int32
-	DamagePercentage string
-	BattleLogs       pqtype.NullRawMessage
-	BattleTime       time.Time
+	DamagePercentage pgtype.Numeric
+	BattleLogs       []byte
+	BattleTime       pgtype.Timestamp
 }
 
 type Building struct {
@@ -93,28 +90,28 @@ type Building struct {
 }
 
 type BuildingsOwned struct {
-	ID              uuid.UUID
-	PlayerID        uuid.UUID
+	ID              pgtype.UUID
+	PlayerID        pgtype.UUID
 	BuildingType    string
 	BuildingID      int32
 	CurrentLevel    int32
 	XCoords         int32
 	YCoords         int32
-	LastCollectedAt sql.NullTime
-	TimePurchased   sql.NullTime
-	IsBuilt         sql.NullBool
+	LastCollectedAt pgtype.Timestamp
+	TimePurchased   pgtype.Timestamp
+	IsBuilt         pgtype.Bool
 }
 
 type DefenseBuilding struct {
 	BuildingID  int32
 	Damage      int32
 	AttackRange int32
-	AttackSpeed string
+	AttackSpeed pgtype.Numeric
 	HitRate     int32
 }
 
 type Player struct {
-	ID           uuid.UUID
+	ID           pgtype.UUID
 	VillageLevel int32
 	GoldCoins    int32
 	Elixir       int32
@@ -122,13 +119,13 @@ type Player struct {
 	AttacksWon   int32
 	AttacksLost  int32
 	TotalLooted  int32
-	CreatedAt    time.Time
+	CreatedAt    pgtype.Timestamp
 	IsDeleted    bool
 }
 
 type ResourceBuilding struct {
 	BuildingID     int32
-	ProductionRate string
+	ProductionRate pgtype.Numeric
 	ResourceType   ResourceType
 }
 
@@ -148,11 +145,11 @@ type Troop struct {
 	Speed        int32
 	AttackRange  int32
 	HousingSpace int32
-	Description  sql.NullString
+	Description  pgtype.Text
 }
 
 type TroopsOwned struct {
-	PlayerID     uuid.UUID
+	PlayerID     pgtype.UUID
 	TroopType    string
 	CurrentLevel int32
 	Quantity     int32
