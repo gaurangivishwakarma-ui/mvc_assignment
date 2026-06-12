@@ -125,13 +125,13 @@ CREATE INDEX ON "battles" ("attacker_id", "is_attacker_winner");
 
 CREATE INDEX ON "battles" ("defender_id", "is_attacker_winner");
 
-ALTER TABLE "buildings" ADD FOREIGN KEY ("id") REFERENCES "defense_buildings" ("building_id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "defense_buildings" ADD FOREIGN KEY ("building_id") REFERENCES "buildings" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "buildings" ADD FOREIGN KEY ("id") REFERENCES "resource_buildings" ("building_id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "resource_buildings" ADD FOREIGN KEY ("building_id") REFERENCES "buildings" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "buildings" ADD FOREIGN KEY ("id") REFERENCES "storage_buildings" ("building_id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "storage_buildings" ADD FOREIGN KEY ("building_id") REFERENCES "buildings" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "buildings" ADD FOREIGN KEY ("id") REFERENCES "army_camp_buildings" ("building_id") DEFERRABLE INITIALLY IMMEDIATE;
+ALTER TABLE "army_camp_buildings" ADD FOREIGN KEY ("building_id") REFERENCES "buildings" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "player" ADD FOREIGN KEY ("id") REFERENCES "authorisation" ("player_id") DEFERRABLE INITIALLY IMMEDIATE;
 
