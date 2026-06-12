@@ -44,13 +44,6 @@ func main() {
 	http.HandleFunc("/api/register", controllers.RegisterPlayer(queries))
 	http.HandleFunc("/api/login", controllers.LoginPlayer(queries))
 
-	http.HandleFunc("/api/village", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		playerID := r.Context().Value(middleware.PlayerIDKey).(string)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(fmt.Sprintf(`{"message": "Welcome to your village! Your secure ID is %s"}`, playerID)))
-	}))
-
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
