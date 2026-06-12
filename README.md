@@ -4,6 +4,8 @@ A high-performance full-stack game server built in Go, utilizing Postgres for st
 
 Local setup 
 
+Please ensure you have docker and go installed.
+
 ### 1. Clone the repository & Navigate inside
 ```
 git clone https://github.com/gaurangivishwakarma-ui/mvc_assignment
