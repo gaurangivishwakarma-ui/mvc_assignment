@@ -29,7 +29,9 @@ chmod +x setup.sh
 ```
 ### 4. Start the server
 
-`go run cmd/main.go`
+```
+go run cmd/main.go
+```
 
 ### For API Testing 
 Once the server is running on port 8080, test end-to-end flow using curl:
