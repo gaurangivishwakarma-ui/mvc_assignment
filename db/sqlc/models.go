@@ -31,8 +31,8 @@ func (e *ResourceType) Scan(src interface{}) error {
 }
 
 type NullResourceType struct {
-	ResourceType ResourceType
-	Valid        bool // Valid is true if ResourceType is not NULL
+	ResourceType ResourceType `json:"resource_type"`
+	Valid        bool         `json:"valid"` // Valid is true if ResourceType is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -54,103 +54,103 @@ func (ns NullResourceType) Value() (driver.Value, error) {
 }
 
 type ArmyCampBuilding struct {
-	BuildingID      int32
-	HousingCapacity int32
+	BuildingID      int32 `json:"building_id"`
+	HousingCapacity int32 `json:"housing_capacity"`
 }
 
 type Authorisation struct {
-	PlayerID     pgtype.UUID
-	Username     string
-	PasswordHash string
+	PlayerID     pgtype.UUID `json:"player_id"`
+	Username     string      `json:"username"`
+	PasswordHash string      `json:"password_hash"`
 }
 
 type Battle struct {
-	ID               pgtype.UUID
-	AttackerID       pgtype.UUID
-	DefenderID       pgtype.UUID
-	IsAttackerWinner pgtype.Bool
-	GoldStolen       int32
-	ElixirStolen     int32
-	DamagePercentage pgtype.Numeric
-	BattleLogs       []byte
-	BattleTime       pgtype.Timestamp
+	ID               pgtype.UUID      `json:"id"`
+	AttackerID       pgtype.UUID      `json:"attacker_id"`
+	DefenderID       pgtype.UUID      `json:"defender_id"`
+	IsAttackerWinner pgtype.Bool      `json:"is_attacker_winner"`
+	GoldStolen       int32            `json:"gold_stolen"`
+	ElixirStolen     int32            `json:"elixir_stolen"`
+	DamagePercentage pgtype.Numeric   `json:"damage_percentage"`
+	BattleLogs       []byte           `json:"battle_logs"`
+	BattleTime       pgtype.Timestamp `json:"battle_time"`
 }
 
 type Building struct {
-	ID           int32
-	BuildingType string
-	Level        int32
-	Name         string
-	Width        int32
-	Breadth      int32
-	CostType     ResourceType
-	Cost         int32
-	HitPoints    int32
-	LevelReq     int32
+	ID           int32        `json:"id"`
+	BuildingType string       `json:"building_type"`
+	Level        int32        `json:"level"`
+	Name         string       `json:"name"`
+	Width        int32        `json:"width"`
+	Breadth      int32        `json:"breadth"`
+	CostType     ResourceType `json:"cost_type"`
+	Cost         int32        `json:"cost"`
+	HitPoints    int32        `json:"hit_points"`
+	LevelReq     int32        `json:"level_req"`
 }
 
 type BuildingsOwned struct {
-	ID              pgtype.UUID
-	PlayerID        pgtype.UUID
-	BuildingType    string
-	BuildingID      int32
-	CurrentLevel    int32
-	XCoords         int32
-	YCoords         int32
-	LastCollectedAt pgtype.Timestamp
-	TimePurchased   pgtype.Timestamp
-	IsBuilt         pgtype.Bool
+	ID              pgtype.UUID      `json:"id"`
+	PlayerID        pgtype.UUID      `json:"player_id"`
+	BuildingType    string           `json:"building_type"`
+	BuildingID      int32            `json:"building_id"`
+	CurrentLevel    int32            `json:"current_level"`
+	XCoords         int32            `json:"x_coords"`
+	YCoords         int32            `json:"y_coords"`
+	LastCollectedAt pgtype.Timestamp `json:"last_collected_at"`
+	TimePurchased   pgtype.Timestamp `json:"time_purchased"`
+	IsBuilt         pgtype.Bool      `json:"is_built"`
 }
 
 type DefenseBuilding struct {
-	BuildingID  int32
-	Damage      int32
-	AttackRange int32
-	AttackSpeed pgtype.Numeric
-	HitRate     int32
+	BuildingID  int32          `json:"building_id"`
+	Damage      int32          `json:"damage"`
+	AttackRange int32          `json:"attack_range"`
+	AttackSpeed pgtype.Numeric `json:"attack_speed"`
+	HitRate     int32          `json:"hit_rate"`
 }
 
 type Player struct {
-	ID           pgtype.UUID
-	VillageLevel int32
-	GoldCoins    int32
-	Elixir       int32
-	XpPoints     int32
-	AttacksWon   int32
-	AttacksLost  int32
-	TotalLooted  int32
-	CreatedAt    pgtype.Timestamp
-	IsDeleted    bool
+	ID           pgtype.UUID      `json:"id"`
+	VillageLevel int32            `json:"village_level"`
+	GoldCoins    int32            `json:"gold_coins"`
+	Elixir       int32            `json:"elixir"`
+	XpPoints     int32            `json:"xp_points"`
+	AttacksWon   int32            `json:"attacks_won"`
+	AttacksLost  int32            `json:"attacks_lost"`
+	TotalLooted  int32            `json:"total_looted"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	IsDeleted    bool             `json:"is_deleted"`
 }
 
 type ResourceBuilding struct {
-	BuildingID     int32
-	ProductionRate pgtype.Numeric
-	ResourceType   ResourceType
+	BuildingID     int32          `json:"building_id"`
+	ProductionRate pgtype.Numeric `json:"production_rate"`
+	ResourceType   ResourceType   `json:"resource_type"`
 }
 
 type StorageBuilding struct {
-	BuildingID      int32
-	StorageCapacity int32
-	ResourceType    ResourceType
+	BuildingID      int32        `json:"building_id"`
+	StorageCapacity int32        `json:"storage_capacity"`
+	ResourceType    ResourceType `json:"resource_type"`
 }
 
 type Troop struct {
-	TroopType    string
-	LevelReq     int32
-	ElixirCost   int32
-	HitPoints    int32
-	HitRate      int32
-	Damage       int32
-	Speed        int32
-	AttackRange  int32
-	HousingSpace int32
-	Description  pgtype.Text
+	TroopType    string      `json:"troop_type"`
+	LevelReq     int32       `json:"level_req"`
+	ElixirCost   int32       `json:"elixir_cost"`
+	HitPoints    int32       `json:"hit_points"`
+	HitRate      int32       `json:"hit_rate"`
+	Damage       int32       `json:"damage"`
+	Speed        int32       `json:"speed"`
+	AttackRange  int32       `json:"attack_range"`
+	HousingSpace int32       `json:"housing_space"`
+	Description  pgtype.Text `json:"description"`
 }
 
 type TroopsOwned struct {
-	PlayerID     pgtype.UUID
-	TroopType    string
-	CurrentLevel int32
-	Quantity     int32
+	PlayerID     pgtype.UUID `json:"player_id"`
+	TroopType    string      `json:"troop_type"`
+	CurrentLevel int32       `json:"current_level"`
+	Quantity     int32       `json:"quantity"`
 }

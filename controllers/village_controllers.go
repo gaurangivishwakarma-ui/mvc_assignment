@@ -39,12 +39,7 @@ func GetVillage(queries *db.Queries) http.HandlerFunc {
 		}
 
 		response := map[string]interface{}{
-			"profile": map[string]interface{}{
-				"village_level": profile.VillageLevel,
-				"gold_coins":    profile.GoldCoins,
-				"elixir":        profile.Elixir,
-				"xp_points":     profile.XpPoints,
-			},
+			"profile":   profile,
 			"buildings": buildings,
 		}
 

@@ -10,4 +10,7 @@ migratedown:
 	migrate -path db/migrations -database "postgresql://root:secret@localhost:5432/game_db?sslmode=disable" --verbose down
 sqlc:
 	sqlc generate
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc
+seed:
+	seed:
+	docker exec -i postgres psql -U $(DB_USER) -d $(DB_NAME) -f - < db/seed.sql
+.PHONY: postgres createdb dropdb migrateup migratedown sqlc seed

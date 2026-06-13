@@ -18,14 +18,14 @@ RETURNING player_id, username
 `
 
 type CreatePlayerAuthParams struct {
-	PlayerID     pgtype.UUID
-	Username     string
-	PasswordHash string
+	PlayerID     pgtype.UUID `json:"player_id"`
+	Username     string      `json:"username"`
+	PasswordHash string      `json:"password_hash"`
 }
 
 type CreatePlayerAuthRow struct {
-	PlayerID pgtype.UUID
-	Username string
+	PlayerID pgtype.UUID `json:"player_id"`
+	Username string      `json:"username"`
 }
 
 func (q *Queries) CreatePlayerAuth(ctx context.Context, arg CreatePlayerAuthParams) (CreatePlayerAuthRow, error) {
@@ -42,10 +42,10 @@ RETURNING id, village_level, gold_coins, elixir
 `
 
 type CreatePlayerProfileRow struct {
-	ID           pgtype.UUID
-	VillageLevel int32
-	GoldCoins    int32
-	Elixir       int32
+	ID           pgtype.UUID `json:"id"`
+	VillageLevel int32       `json:"village_level"`
+	GoldCoins    int32       `json:"gold_coins"`
+	Elixir       int32       `json:"elixir"`
 }
 
 func (q *Queries) CreatePlayerProfile(ctx context.Context, id pgtype.UUID) (CreatePlayerProfileRow, error) {
