@@ -11,6 +11,64 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deductResources = `-- name: DeductResources :one
+UPDATE player
+SET gold_coins = gold_coins - $1,
+    elixir = elixir - $2
+WHERE id = $3 AND gold_coins >= $1 AND elixir >= $2
+RETURNING id, village_level, gold_coins, elixir, xp_points
+`
+
+type DeductResourcesParams struct {
+	GoldCoins int32       `json:"gold_coins"`
+	Elixir    int32       `json:"elixir"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+type DeductResourcesRow struct {
+	ID           pgtype.UUID `json:"id"`
+	VillageLevel int32       `json:"village_level"`
+	GoldCoins    int32       `json:"gold_coins"`
+	Elixir       int32       `json:"elixir"`
+	XpPoints     int32       `json:"xp_points"`
+}
+
+func (q *Queries) DeductResources(ctx context.Context, arg DeductResourcesParams) (DeductResourcesRow, error) {
+	row := q.db.QueryRow(ctx, deductResources, arg.GoldCoins, arg.Elixir, arg.ID)
+	var i DeductResourcesRow
+	err := row.Scan(
+		&i.ID,
+		&i.VillageLevel,
+		&i.GoldCoins,
+		&i.Elixir,
+		&i.XpPoints,
+	)
+	return i, err
+}
+
+const getBuildingByID = `-- name: GetBuildingByID :one
+SELECT id, building_type, level, name, width, breadth, cost_type, cost, hit_points, level_req FROM buildings 
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetBuildingByID(ctx context.Context, id int32) (Building, error) {
+	row := q.db.QueryRow(ctx, getBuildingByID, id)
+	var i Building
+	err := row.Scan(
+		&i.ID,
+		&i.BuildingType,
+		&i.Level,
+		&i.Name,
+		&i.Width,
+		&i.Breadth,
+		&i.CostType,
+		&i.Cost,
+		&i.HitPoints,
+		&i.LevelReq,
+	)
+	return i, err
+}
+
 const getPlayerBuildings = `-- name: GetPlayerBuildings :many
 SELECT id, player_id, building_type, building_id, current_level, x_coords, y_coords, last_collected_at, time_purchased, is_built FROM "buildings_owned"
 WHERE player_id = $1
@@ -47,6 +105,74 @@ func (q *Queries) GetPlayerBuildings(ctx context.Context, playerID pgtype.UUID) 
 	return items, nil
 }
 
+const getPlayerBuildingsWithDimensions = `-- name: GetPlayerBuildingsWithDimensions :many
+SELECT 
+    bo.id, 
+    bo.player_id, 
+    bo.building_type, 
+    bo.building_id, 
+    bo.current_level, 
+    bo.x_coords, 
+    bo.y_coords, 
+    bo.last_collected_at, 
+    bo.time_purchased, 
+    bo.is_built,
+    b.width,
+    b.breadth
+FROM buildings_owned bo
+JOIN buildings b ON bo.building_id = b.id
+WHERE bo.player_id = $1
+`
+
+type GetPlayerBuildingsWithDimensionsRow struct {
+	ID              pgtype.UUID      `json:"id"`
+	PlayerID        pgtype.UUID      `json:"player_id"`
+	BuildingType    string           `json:"building_type"`
+	BuildingID      int32            `json:"building_id"`
+	CurrentLevel    int32            `json:"current_level"`
+	XCoords         int32            `json:"x_coords"`
+	YCoords         int32            `json:"y_coords"`
+	LastCollectedAt pgtype.Timestamp `json:"last_collected_at"`
+	TimePurchased   pgtype.Timestamp `json:"time_purchased"`
+	IsBuilt         pgtype.Bool      `json:"is_built"`
+	Width           int32            `json:"width"`
+	Breadth         int32            `json:"breadth"`
+}
+
+// Fetches the player's buildings ALONG WITH their width and breadth from the catalog for collision detection
+func (q *Queries) GetPlayerBuildingsWithDimensions(ctx context.Context, playerID pgtype.UUID) ([]GetPlayerBuildingsWithDimensionsRow, error) {
+	rows, err := q.db.Query(ctx, getPlayerBuildingsWithDimensions, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayerBuildingsWithDimensionsRow
+	for rows.Next() {
+		var i GetPlayerBuildingsWithDimensionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayerID,
+			&i.BuildingType,
+			&i.BuildingID,
+			&i.CurrentLevel,
+			&i.XCoords,
+			&i.YCoords,
+			&i.LastCollectedAt,
+			&i.TimePurchased,
+			&i.IsBuilt,
+			&i.Width,
+			&i.Breadth,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPlayerProfile = `-- name: GetPlayerProfile :one
 SELECT id, village_level, gold_coins, elixir, xp_points, attacks_won, attacks_lost, total_looted, created_at, is_deleted FROM "player"
 WHERE id = $1 LIMIT 1
@@ -66,6 +192,56 @@ func (q *Queries) GetPlayerProfile(ctx context.Context, id pgtype.UUID) (Player,
 		&i.TotalLooted,
 		&i.CreatedAt,
 		&i.IsDeleted,
+	)
+	return i, err
+}
+
+const placeBuilding = `-- name: PlaceBuilding :one
+INSERT INTO buildings_owned (
+    id,
+    player_id, 
+    building_type, 
+    building_id, 
+    current_level, 
+    x_coords, 
+    y_coords, 
+    time_purchased, 
+    is_built
+) VALUES (
+    $1, $2, $3, $4, 1, $5, $6, NOW(), false
+) RETURNING id, player_id, building_type, building_id, current_level, x_coords, y_coords, last_collected_at, time_purchased, is_built
+`
+
+type PlaceBuildingParams struct {
+	ID           pgtype.UUID `json:"id"`
+	PlayerID     pgtype.UUID `json:"player_id"`
+	BuildingType string      `json:"building_type"`
+	BuildingID   int32       `json:"building_id"`
+	XCoords      int32       `json:"x_coords"`
+	YCoords      int32       `json:"y_coords"`
+}
+
+func (q *Queries) PlaceBuilding(ctx context.Context, arg PlaceBuildingParams) (BuildingsOwned, error) {
+	row := q.db.QueryRow(ctx, placeBuilding,
+		arg.ID,
+		arg.PlayerID,
+		arg.BuildingType,
+		arg.BuildingID,
+		arg.XCoords,
+		arg.YCoords,
+	)
+	var i BuildingsOwned
+	err := row.Scan(
+		&i.ID,
+		&i.PlayerID,
+		&i.BuildingType,
+		&i.BuildingID,
+		&i.CurrentLevel,
+		&i.XCoords,
+		&i.YCoords,
+		&i.LastCollectedAt,
+		&i.TimePurchased,
+		&i.IsBuilt,
 	)
 	return i, err
 }
