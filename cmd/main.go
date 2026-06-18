@@ -43,8 +43,15 @@ func main() {
 
 	http.HandleFunc("/api/register", controllers.RegisterPlayer(queries))
 	http.HandleFunc("/api/login", controllers.LoginPlayer(queries))
+	http.HandleFunc("/api/player/dashboard", middleware.RequireAuth(controllers.GetDashboard(queries)))
+
 	http.HandleFunc("/api/village", middleware.RequireAuth(controllers.GetVillage(queries)))
 	http.HandleFunc("/api/village/buildings", middleware.RequireAuth(controllers.PurchaseBuilding(queries)))
+	http.HandleFunc("/api/village/buildings/upgrade", middleware.RequireAuth(controllers.UpgradeBuilding(queries)))
+
+	http.HandleFunc("/api/village/collect", middleware.RequireAuth(controllers.CollectResources(queries)))
+
+	http.HandleFunc("/api/army/catalog", middleware.RequireAuth(controllers.GetArmyCatalog(queries)))
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

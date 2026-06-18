@@ -1,3 +1,8 @@
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 postgres:
 	docker run --name postgres -p 5432:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=secret -d docker.io/library/postgres
 createdb:
@@ -11,6 +16,5 @@ migratedown:
 sqlc:
 	sqlc generate
 seed:
-	seed:
 	docker exec -i postgres psql -U $(DB_USER) -d $(DB_NAME) -f - < db/seed.sql
 .PHONY: postgres createdb dropdb migrateup migratedown sqlc seed
