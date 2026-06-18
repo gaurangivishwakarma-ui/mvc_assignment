@@ -58,8 +58,8 @@ CREATE TABLE "defense_buildings" (
 CREATE TABLE "player" (
   "id" uuid PRIMARY KEY,
   "village_level" int NOT NULL CHECK (village_level >= 1) DEFAULT 1,
-  "gold_coins" int NOT NULL CHECK (gold_coins >= 0) DEFAULT 0,
-  "elixir" int NOT NULL CHECK (elixir >= 0) DEFAULT 0,
+  "gold_coins" int NOT NULL CHECK (gold_coins >= 0) DEFAULT 1000,
+  "elixir" int NOT NULL CHECK (elixir >= 0) DEFAULT 500,
   "xp_points" int NOT NULL CHECK (xp_points >= 0) DEFAULT 0,
   "attacks_won" int NOT NULL CHECK (attacks_won >= 0) DEFAULT 0,
   "attacks_lost" int NOT NULL CHECK (attacks_lost >= 0) DEFAULT 0,
