@@ -50,3 +50,32 @@ curl -X POST http://localhost:8080/api/login \
      -H "Content-Type: application/json" \
      -d '{"username": "VillageKing", "password": "supersecretpassword"}'
 ```
+####  Dashboard 
+```
+curl -X GET http://localhost:8080/api/player/dashboard \
+     -H "Authorization: Bearer <token>"
+```
+#### Buy Buildings
+run this after seeding the database by running, `make seed`
+```
+curl -X POST http://localhost:8080/api/village/buildings \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"building_id": 101, "x_coords": 10, "y_coords": 10}'
+```
+#### Collect resources
+```
+curl -X POST http://localhost:8080/api/village/collect      -H "Authorization: Bearer <token>"
+```
+#### Upgrade building
+```
+curl -X POST http://localhost:8080/api/village/buildings/upgrade \
+     -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -d '{"placement_id": "placementid"}'
+```
+#### View army catalog
+```
+curl -X GET http://localhost:8080/api/army/catalog \
+     -H "Authorization: Bearer <token>"
+```
