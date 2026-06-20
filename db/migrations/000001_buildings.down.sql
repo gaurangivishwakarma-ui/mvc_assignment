@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "buildings" CASCADE;
+DROP TYPE IF EXISTS "resource_type";
