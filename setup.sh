@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-podman rm -f postgres 2>/dev/null || true
+docker rm -f postgres 2>/dev/null || true
 make postgres
 sleep 8
 make createdb
