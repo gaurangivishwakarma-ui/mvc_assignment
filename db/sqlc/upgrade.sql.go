@@ -110,3 +110,20 @@ func (q *Queries) PayForUpgrade(ctx context.Context, arg PayForUpgradeParams) er
 	_, err := q.db.Exec(ctx, payForUpgrade, arg.GoldCoins, arg.Elixir, arg.ID)
 	return err
 }
+
+const upgradeVillageLevel = `-- name: UpgradeVillageLevel :exec
+UPDATE player
+SET village_level = village_level + 1,
+    gold_coins = gold_coins - $1
+WHERE id = $2
+`
+
+type UpgradeVillageLevelParams struct {
+	GoldCost int32       `json:"gold_cost"`
+	PlayerID pgtype.UUID `json:"player_id"`
+}
+
+func (q *Queries) UpgradeVillageLevel(ctx context.Context, arg UpgradeVillageLevelParams) error {
+	_, err := q.db.Exec(ctx, upgradeVillageLevel, arg.GoldCost, arg.PlayerID)
+	return err
+}

@@ -27,3 +27,9 @@ WHERE id = $3;
 UPDATE buildings_owned
 SET building_id = $1, current_level = $2
 WHERE id = $3;
+
+-- name: UpgradeVillageLevel :exec
+UPDATE player
+SET village_level = village_level + 1,
+    gold_coins = gold_coins - sqlc.arg('gold_cost')
+WHERE id = sqlc.arg('player_id');
