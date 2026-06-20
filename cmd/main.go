@@ -48,10 +48,17 @@ func main() {
 	http.HandleFunc("/api/village", middleware.RequireAuth(controllers.GetVillage(queries)))
 	http.HandleFunc("/api/village/buildings", middleware.RequireAuth(controllers.PurchaseBuilding(queries)))
 	http.HandleFunc("/api/village/buildings/upgrade", middleware.RequireAuth(controllers.UpgradeBuilding(queries)))
-
+	http.HandleFunc("/api/village/move-building", middleware.RequireAuth(controllers.MoveBuilding(dbPool)))
+	http.HandleFunc("/api/village/upgrade", middleware.RequireAuth(controllers.UpgradePlayerVillage(dbPool)))
 	http.HandleFunc("/api/village/collect", middleware.RequireAuth(controllers.CollectResources(queries)))
 
 	http.HandleFunc("/api/army/catalog", middleware.RequireAuth(controllers.GetArmyCatalog(queries)))
+	http.HandleFunc("/api/army/train", middleware.RequireAuth(controllers.TrainTroops(dbPool)))
+	http.HandleFunc("/api/army/status", middleware.RequireAuth(controllers.GetArmyStatus(queries)))
+
+	http.HandleFunc("/api/battle/match", middleware.RequireAuth(controllers.GetMatch(queries)))
+	http.HandleFunc("/api/battle/attack", middleware.RequireAuth(controllers.AttackOpponent(dbPool)))
+	http.HandleFunc("/api/battle/replay", middleware.RequireAuth(controllers.GetBattleReplay(queries)))
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

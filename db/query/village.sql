@@ -7,7 +7,6 @@ SELECT * FROM "buildings_owned"
 WHERE player_id = $1;
 
 -- name: GetPlayerBuildingsWithDimensions :many
--- Fetches the player's buildings ALONG WITH their width and breadth from the catalog for collision detection
 SELECT 
     bo.id, 
     bo.player_id, 

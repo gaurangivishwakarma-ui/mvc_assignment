@@ -9,6 +9,7 @@ import (
 	"github.com/gaurangi/mvc_assignment/middleware"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UpgradeRequest struct {
@@ -98,6 +99,70 @@ func UpgradeBuilding(queries *db.Queries) http.HandlerFunc {
 			"message":       "Building upgraded successfully!",
 			"new_level":     ownedBuilding.CurrentLevel + 1,
 			"building_name": nextLevel.Name,
+		})
+	}
+}
+
+func UpgradePlayerVillage(pool *pgxpool.Pool) http.HandlerFunc {
+	queries := db.New(pool)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
+		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
+		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+
+		tx, err := pool.Begin(r.Context())
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback(r.Context())
+		qtx := queries.WithTx(tx)
+
+		player, err := qtx.GetPlayerProfile(r.Context(), pgPlayerID)
+		if err != nil {
+			http.Error(w, "Player profile not found", http.StatusNotFound)
+			return
+		}
+
+		goldCost := player.VillageLevel * 10000
+
+		if player.VillageLevel >= 4 {
+			http.Error(w, "Your Village has already reached maximum level!", http.StatusBadRequest)
+			return
+		}
+
+		if player.GoldCoins < goldCost {
+			http.Error(w, "Insufficient Gold Coins to upgrade your Village!", http.StatusPaymentRequired)
+			return
+		}
+
+		err = qtx.UpgradeVillageLevel(r.Context(), db.UpgradeVillageLevelParams{
+			GoldCost: goldCost,
+			PlayerID: pgPlayerID,
+		})
+		if err != nil {
+			http.Error(w, "Failed to upgrade village level", http.StatusInternalServerError)
+			return
+		}
+
+		if err := tx.Commit(r.Context()); err != nil {
+			http.Error(w, "Failed to finalize village upgrade", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":           "Congratulations! Your Village level has increased!",
+			"old_village_level": player.VillageLevel,
+			"new_village_level": player.VillageLevel + 1,
+			"gold_spent":        goldCost,
+			"remaining_gold":    player.GoldCoins - goldCost,
 		})
 	}
 }

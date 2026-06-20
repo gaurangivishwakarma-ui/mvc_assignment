@@ -139,7 +139,6 @@ type GetPlayerBuildingsWithDimensionsRow struct {
 	Breadth         int32            `json:"breadth"`
 }
 
-// Fetches the player's buildings ALONG WITH their width and breadth from the catalog for collision detection
 func (q *Queries) GetPlayerBuildingsWithDimensions(ctx context.Context, playerID pgtype.UUID) ([]GetPlayerBuildingsWithDimensionsRow, error) {
 	rows, err := q.db.Query(ctx, getPlayerBuildingsWithDimensions, playerID)
 	if err != nil {

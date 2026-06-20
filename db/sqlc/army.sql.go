@@ -7,7 +7,93 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const addTroopsToArmy = `-- name: AddTroopsToArmy :exec
+INSERT INTO troops_owned (player_id, troop_type, current_level, quantity)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (player_id, troop_type) 
+DO UPDATE SET quantity = troops_owned.quantity + EXCLUDED.quantity
+`
+
+type AddTroopsToArmyParams struct {
+	PlayerID     pgtype.UUID `json:"player_id"`
+	TroopType    string      `json:"troop_type"`
+	CurrentLevel int32       `json:"current_level"`
+	Quantity     int32       `json:"quantity"`
+}
+
+func (q *Queries) AddTroopsToArmy(ctx context.Context, arg AddTroopsToArmyParams) error {
+	_, err := q.db.Exec(ctx, addTroopsToArmy,
+		arg.PlayerID,
+		arg.TroopType,
+		arg.CurrentLevel,
+		arg.Quantity,
+	)
+	return err
+}
+
+const getArmyStatus = `-- name: GetArmyStatus :many
+SELECT troop_type, current_level, quantity
+FROM troops_owned
+WHERE player_id = $1 AND quantity > 0
+`
+
+type GetArmyStatusRow struct {
+	TroopType    string `json:"troop_type"`
+	CurrentLevel int32  `json:"current_level"`
+	Quantity     int32  `json:"quantity"`
+}
+
+func (q *Queries) GetArmyStatus(ctx context.Context, playerID pgtype.UUID) ([]GetArmyStatusRow, error) {
+	rows, err := q.db.Query(ctx, getArmyStatus, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetArmyStatusRow
+	for rows.Next() {
+		var i GetArmyStatusRow
+		if err := rows.Scan(&i.TroopType, &i.CurrentLevel, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCurrentHousingUsed = `-- name: GetCurrentHousingUsed :one
+SELECT COALESCE(SUM(t_own.quantity * t.housing_space), 0)::int AS used_capacity
+FROM troops_owned t_own
+JOIN troops t ON t_own.troop_type = t.troop_type AND t_own.current_level = t.level_req
+WHERE t_own.player_id = $1
+`
+
+func (q *Queries) GetCurrentHousingUsed(ctx context.Context, playerID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, getCurrentHousingUsed, playerID)
+	var used_capacity int32
+	err := row.Scan(&used_capacity)
+	return used_capacity, err
+}
+
+const getTotalHousingCapacity = `-- name: GetTotalHousingCapacity :one
+SELECT COALESCE(SUM(ac.housing_capacity), 0)::int AS total_capacity
+FROM buildings_owned bo
+JOIN army_camp_buildings ac ON bo.building_id = ac.building_id
+WHERE bo.player_id = $1
+`
+
+func (q *Queries) GetTotalHousingCapacity(ctx context.Context, playerID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, getTotalHousingCapacity, playerID)
+	var total_capacity int32
+	err := row.Scan(&total_capacity)
+	return total_capacity, err
+}
 
 const getTroopCatalog = `-- name: GetTroopCatalog :many
 SELECT troop_type, level_req, elixir_cost, hit_points, hit_rate, damage, speed, attack_range, housing_space, description FROM troops
@@ -42,4 +128,50 @@ func (q *Queries) GetTroopCatalog(ctx context.Context) ([]Troop, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTroopDetails = `-- name: GetTroopDetails :one
+SELECT troop_type, elixir_cost, housing_space, level_req 
+FROM troops 
+WHERE troop_type = $1 AND level_req = $2
+`
+
+type GetTroopDetailsParams struct {
+	TroopType string `json:"troop_type"`
+	LevelReq  int32  `json:"level_req"`
+}
+
+type GetTroopDetailsRow struct {
+	TroopType    string `json:"troop_type"`
+	ElixirCost   int32  `json:"elixir_cost"`
+	HousingSpace int32  `json:"housing_space"`
+	LevelReq     int32  `json:"level_req"`
+}
+
+func (q *Queries) GetTroopDetails(ctx context.Context, arg GetTroopDetailsParams) (GetTroopDetailsRow, error) {
+	row := q.db.QueryRow(ctx, getTroopDetails, arg.TroopType, arg.LevelReq)
+	var i GetTroopDetailsRow
+	err := row.Scan(
+		&i.TroopType,
+		&i.ElixirCost,
+		&i.HousingSpace,
+		&i.LevelReq,
+	)
+	return i, err
+}
+
+const payForTroopTraining = `-- name: PayForTroopTraining :exec
+UPDATE player
+SET elixir = elixir - $1
+WHERE id = $2
+`
+
+type PayForTroopTrainingParams struct {
+	Elixir int32       `json:"elixir"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) PayForTroopTraining(ctx context.Context, arg PayForTroopTrainingParams) error {
+	_, err := q.db.Exec(ctx, payForTroopTraining, arg.Elixir, arg.ID)
+	return err
 }
