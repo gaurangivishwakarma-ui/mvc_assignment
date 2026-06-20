@@ -23,16 +23,14 @@ DB_SSLMODE=disable
 SERVER_PORT=8080
 JWT_SECRET=yoursupersecuresecretkeychangeitlater
 ```
-### 3. Run setup script 
+### 3. Run docker compose
 
 ```
-chmod +x setup.sh
-./setup.sh
+docker compose up --build -d
 ```
-### 4. Start the server
-
+to stop everything:
 ```
-go run cmd/main.go
+docker compose down -v
 ```
 
 ### For API Testing 
