@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
 	"github.com/gaurangi/mvc_assignment/middleware"
+	"github.com/gaurangi/mvc_assignment/services"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func GetVillage(queries *db.Queries) http.HandlerFunc {
@@ -19,24 +19,14 @@ func GetVillage(queries *db.Queries) http.HandlerFunc {
 
 		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
-		profile, err := queries.GetPlayerProfile(r.Context(), pgPlayerID)
+		result, statusCode, err := services.GetVillage(r.Context(), queries, pgPlayerID)
 		if err != nil {
-			http.Error(w, "Failed to fetch player profile", http.StatusInternalServerError)
+			http.Error(w, err.Error(), statusCode)
 			return
 		}
 
-		buildings, err := queries.GetPlayerBuildings(r.Context(), pgPlayerID)
-		if err != nil {
-			buildings = []db.BuildingsOwned{}
-		}
-
-		response := map[string]interface{}{
-			"profile":   profile,
-			"buildings": buildings,
-		}
-
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		w.WriteHeader(statusCode)
+		json.NewEncoder(w).Encode(result)
 	}
 }
