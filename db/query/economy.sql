@@ -23,3 +23,13 @@ SET last_collected_at = NOW()
 WHERE player_id = $1 AND building_id IN (
     SELECT building_id FROM resource_buildings
 );
+
+-- name: GetTotalStorageCapacity :many
+SELECT
+    sb.resource_type,
+    CAST(SUM(sb.storage_capacity) AS int) AS total_capacity
+FROM buildings_owned bo
+JOIN storage_buildings sb ON bo.building_id = sb.building_id
+WHERE bo.player_id = $1
+  AND bo.is_built = true
+GROUP BY sb.resource_type;
