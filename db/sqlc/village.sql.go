@@ -195,6 +195,28 @@ func (q *Queries) GetPlayerProfile(ctx context.Context, id pgtype.UUID) (Player,
 	return i, err
 }
 
+const markBuildingAsBuilt = `-- name: MarkBuildingAsBuilt :execrows
+UPDATE buildings_owned
+SET is_built = true
+WHERE id = $1
+  AND player_id = $2
+  AND is_built = false
+  AND NOW() >= time_purchased + INTERVAL '5 seconds'
+`
+
+type MarkBuildingAsBuiltParams struct {
+	ID       pgtype.UUID `json:"id"`
+	PlayerID pgtype.UUID `json:"player_id"`
+}
+
+func (q *Queries) MarkBuildingAsBuilt(ctx context.Context, arg MarkBuildingAsBuiltParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markBuildingAsBuilt, arg.ID, arg.PlayerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const placeBuilding = `-- name: PlaceBuilding :one
 INSERT INTO buildings_owned (
     id,

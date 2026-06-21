@@ -49,3 +49,11 @@ INSERT INTO buildings_owned (
 ) VALUES (
     $1, $2, $3, $4, 1, $5, $6, NOW(), false
 ) RETURNING *;
+
+-- name: MarkBuildingAsBuilt :execrows
+UPDATE buildings_owned
+SET is_built = true
+WHERE id = $1
+  AND player_id = $2
+  AND is_built = false
+  AND NOW() >= time_purchased + INTERVAL '5 seconds';
