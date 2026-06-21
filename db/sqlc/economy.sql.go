@@ -93,6 +93,42 @@ func (q *Queries) GetResourceBuildingsForCollection(ctx context.Context, playerI
 	return items, nil
 }
 
+const getTotalStorageCapacity = `-- name: GetTotalStorageCapacity :many
+SELECT
+    sb.resource_type,
+    CAST(SUM(sb.storage_capacity) AS int) AS total_capacity
+FROM buildings_owned bo
+JOIN storage_buildings sb ON bo.building_id = sb.building_id
+WHERE bo.player_id = $1
+  AND bo.is_built = true
+GROUP BY sb.resource_type
+`
+
+type GetTotalStorageCapacityRow struct {
+	ResourceType  ResourceType `json:"resource_type"`
+	TotalCapacity int32        `json:"total_capacity"`
+}
+
+func (q *Queries) GetTotalStorageCapacity(ctx context.Context, playerID pgtype.UUID) ([]GetTotalStorageCapacityRow, error) {
+	rows, err := q.db.Query(ctx, getTotalStorageCapacity, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTotalStorageCapacityRow
+	for rows.Next() {
+		var i GetTotalStorageCapacityRow
+		if err := rows.Scan(&i.ResourceType, &i.TotalCapacity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resetCollectionTime = `-- name: ResetCollectionTime :exec
 UPDATE buildings_owned
 SET last_collected_at = NOW()

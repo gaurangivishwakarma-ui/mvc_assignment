@@ -40,6 +40,51 @@ func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		}, http.StatusOK, nil
 	}
 
+	profile, err := queries.GetPlayerProfile(ctx, pgPlayerID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch player profile")
+	}
+
+	storages, err := queries.GetTotalStorageCapacity(ctx, pgPlayerID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch storage capacity")
+	}
+
+	var goldCap int32 = 1000 //cap of 1000 if
+	var elixirCap int32 = 1000
+
+	for _, s := range storages {
+		if s.ResourceType == db.ResourceTypeGold {
+			goldCap = s.TotalCapacity
+		} else if s.ResourceType == db.ResourceTypeElixir {
+			elixirCap = s.TotalCapacity
+		}
+	}
+
+	// Clamp: player can only collect up to what their storages can hold
+	goldSpace := goldCap - profile.GoldCoins
+	elixirSpace := elixirCap - profile.Elixir
+
+	if goldSpace < 0 {
+		goldSpace = 0
+	}
+	if elixirSpace < 0 {
+		elixirSpace = 0
+	}
+
+	if totalGoldGenerated > goldSpace {
+		totalGoldGenerated = goldSpace
+	}
+	if totalElixirGenerated > elixirSpace {
+		totalElixirGenerated = elixirSpace
+	}
+
+	if totalGoldGenerated == 0 && totalElixirGenerated == 0 {
+		return map[string]interface{}{
+			"message": "Storage is full! Upgrade your Gold/Elixir Storage to collect more.",
+		}, http.StatusOK, nil
+	}
+
 	addParams := db.AddPlayerResourcesParams{
 		GoldCoins: totalGoldGenerated,
 		Elixir:    totalElixirGenerated,
@@ -65,6 +110,10 @@ func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		"new_balance": map[string]int32{
 			"gold":   updatedProfile.GoldCoins,
 			"elixir": updatedProfile.Elixir,
+		},
+		"storage_caps": map[string]interface{}{
+			"gold_cap":   goldCap,
+			"elixir_cap": elixirCap,
 		},
 	}, http.StatusOK, nil
 }
