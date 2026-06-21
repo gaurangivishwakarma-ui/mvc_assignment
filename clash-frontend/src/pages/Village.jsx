@@ -1,7 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getVillageProfile, getShopCatalog, getArmyCatalog, getArmyStatus } from '../api/village';
+import { getVillageProfile, getShopCatalog, getArmyCatalog, getArmyStatus, trainTroops } from '../api/village';
 
+import archerImg from '../assets/troops/archer.png';
+import barbarianImg from '../assets/troops/barbarian.png';
+import giantImg from '../assets/troops/giant.png';
+import goblinImg from '../assets/troops/goblin.png';
+import wizardImg from '../assets/troops/wizard.png';
+
+const TROOP_ASSETS = {
+    archer: archerImg,
+    barbarian: barbarianImg,
+    giant: giantImg,
+    goblin: goblinImg,
+    wizard: wizardImg
+};
 
 const BUILDING_ASSETS = {
     TOWN_HALL: '/assets/buildings/town_hall.png',
@@ -149,6 +162,8 @@ export default function Village() {
     const [isArmyOpen, setIsArmyOpen] = useState(false);
     const [armyCatalog, setArmyCatalog] = useState([]);
     const [armyStatus, setArmyStatus] = useState([]);
+    const [hoveredTroop, setHoveredTroop] = useState(null);
+    const [troopQuantities, setTroopQuantities] = useState({});
 
     useEffect(() => {
         const loadVillage = async () => {
@@ -190,9 +205,36 @@ export default function Village() {
         setIsShopOpen(false);
     };
 
+    const handleQtyChange = (troopType, delta) => {
+        setTroopQuantities(prev => {
+            const current = prev[troopType] || 1;
+            const next = Math.max(1, current + delta);
+            return { ...prev, [troopType]: next };
+        });
+    };
+
     const handleTrainTroop = async (troop) => {
-        alert(`Training ${troop.troop_type}! Level ${troop.level_req}.`);
-        setIsArmyOpen(false);
+        const qty = troopQuantities[troop.troop_type] || 1;
+        try {
+            const result = await trainTroops({
+                troop_type: troop.troop_type,
+                level: troop.level_req,
+                quantity: qty
+            });
+            alert(result.message);
+            
+            const [profileData, statusData] = await Promise.all([
+                getVillageProfile(),
+                getArmyStatus()
+            ]);
+            setPlayer(profileData);
+            setArmyStatus(statusData.army || []);
+
+            setTroopQuantities(prev => ({ ...prev, [troop.troop_type]: 1 }));
+            setIsArmyOpen(false);
+        } catch (err) {
+            alert(`Training Failed: ${err}`);
+        }
     };
 
     const handleLogout = () => {
@@ -297,25 +339,87 @@ export default function Village() {
 
             {isArmyOpen && (
                 <div style={styles.modalOverlay}>
-                    <div style={styles.modalBox}>
+                    <div style={{ ...styles.modalBox, position: 'relative' }}>
+                        {hoveredTroop && (
+                            <div style={{
+                                position: 'absolute',
+                                right: '105%',
+                                top: '0',
+                                background: 'linear-gradient(to bottom, #4a3525, #2d1f14)',
+                                border: '3px solid #7c6248',
+                                borderRadius: '12px',
+                                padding: '15px',
+                                width: '220px',
+                                color: '#fff',
+                                boxShadow: '0px 10px 25px rgba(0,0,0,0.8)',
+                                zIndex: 110,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px'
+                            }}>
+                                <div style={{ fontWeight: '900', fontSize: '18px', textTransform: 'capitalize', color: '#ffce00', textAlign: 'center' }}>
+                                    {hoveredTroop.troop_type} (Lv {hoveredTroop.level_req})
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'center', background: '#fff', borderRadius: '8px', padding: '5px' }}>
+                                    <img
+                                        src={TROOP_ASSETS[hoveredTroop.troop_type]}
+                                        alt={hoveredTroop.troop_type}
+                                        style={{ width: '100%', height: '180px', objectFit: 'contain', borderRadius: '4px' }}
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ fontSize: '13px', fontStyle: 'italic', color: '#ddd', textAlign: 'center' }}>
+                                    "{hoveredTroop.description}"
+                                </div>
+                                <div style={{ background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '8px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>HP:</span> <span style={{ fontWeight: 'bold' }}>{hoveredTroop.hit_points}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Damage:</span> <span style={{ fontWeight: 'bold' }}>{hoveredTroop.damage}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Speed:</span> <span style={{ fontWeight: 'bold' }}>{hoveredTroop.speed}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Space:</span> <span style={{ fontWeight: 'bold' }}>{hoveredTroop.housing_space}</span></div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Range:</span> <span style={{ fontWeight: 'bold' }}>{hoveredTroop.attack_range}</span></div>
+                                </div>
+                            </div>
+                        )}
                         <div style={styles.modalHeader}>
                             <h2 style={{ margin: 0, fontWeight: '900' }}>TRAIN TROOPS</h2>
                             <button className="coc-button" style={{ width: '40px', margin: 0, padding: '5px' }} onClick={() => setIsArmyOpen(false)}>X</button>
                         </div>
                         <div style={styles.shopGrid}>
                             {armyCatalog.filter(troop => troop.level_req <= (player?.village_level || 1)).map((troop, idx) => (
-                                <div key={idx} style={styles.shopItem}>
+                                <div
+                                    key={idx}
+                                    style={{ ...styles.shopItem, cursor: 'pointer' }}
+                                    onMouseEnter={() => setHoveredTroop(troop)}
+                                    onMouseLeave={() => setHoveredTroop(null)}
+                                >
                                     <div>
                                         <div style={{ fontWeight: '900', fontSize: '16px', textTransform: 'capitalize' }}>{troop.troop_type} (Lv {troop.level_req})</div>
                                         <div style={{ fontSize: '12px', color: '#aaa' }}>Space: {troop.housing_space} | HP: {troop.hit_points} | Dmg: {troop.damage}</div>
                                     </div>
-                                    <button
-                                        className="coc-button"
-                                        style={{ width: 'auto', padding: '8px 15px', fontSize: '13px', margin: 0 }}
-                                        onClick={() => handleTrainTroop(troop)}
-                                    >
-                                        Train: ⚗️ {troop.elixir_cost}
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', borderRadius: '6px', overflow: 'hidden' }}>
+                                            <button 
+                                                style={{ background: '#7c6248', color: '#fff', border: 'none', padding: '5px 10px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                onClick={() => handleQtyChange(troop.troop_type, -1)}
+                                            >-</button>
+                                            <div style={{ padding: '0 5px', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>
+                                                {troopQuantities[troop.troop_type] || 1}
+                                            </div>
+                                            <button 
+                                                style={{ background: '#7c6248', color: '#fff', border: 'none', padding: '5px 10px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                onClick={() => handleQtyChange(troop.troop_type, 1)}
+                                            >+</button>
+                                        </div>
+                                        <button
+                                            className="coc-button"
+                                            style={{ width: 'auto', padding: '8px 15px', fontSize: '13px', margin: 0 }}
+                                            onClick={() => handleTrainTroop(troop)}
+                                        >
+                                            Train: ⚗️ {troop.elixir_cost * (troopQuantities[troop.troop_type] || 1)}
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -77,3 +77,22 @@ export const getArmyStatus = async () => {
         throw error.response?.data?.error || "Failed to load army status";
     }
 };
+
+export const trainTroops = async (data) => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        throw new Error("No commander token found. Please log in again.");
+    }
+
+    try {
+        const response = await axios.post(`${API_URL}/army/train`, data, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.error || "Failed to train troops";
+    }
+};
