@@ -24,6 +24,8 @@ func SetupRoutes(queries *db.Queries, dbPool *pgxpool.Pool) *http.ServeMux {
 	mux.HandleFunc("/api/village/upgrade", middleware.RequireAuth(controllers.UpgradePlayerVillage(dbPool)))
 	mux.HandleFunc("/api/village/collect", middleware.RequireAuth(controllers.CollectResources(queries)))
 
+	mux.HandleFunc("/api/shop/catalog", middleware.RequireAuth(controllers.GetShopCatalog(queries)))
+
 	mux.HandleFunc("/api/army/catalog", middleware.RequireAuth(controllers.GetArmyCatalog(queries)))
 	mux.HandleFunc("/api/army/train", middleware.RequireAuth(controllers.TrainTroops(dbPool)))
 	mux.HandleFunc("/api/army/status", middleware.RequireAuth(controllers.GetArmyStatus(queries)))
