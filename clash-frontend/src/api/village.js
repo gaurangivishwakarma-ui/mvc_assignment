@@ -39,3 +39,41 @@ export const getShopCatalog = async () => {
         throw error.response?.data?.error || "Failed to load shop catalog";
     }
 };
+
+export const getArmyCatalog = async () => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        throw new Error("No commander token found. Please log in again.");
+    }
+
+    try {
+        const response = await axios.get(`${API_URL}/army/catalog`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.error || "Failed to load army catalog";
+    }
+};
+
+export const getArmyStatus = async () => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        throw new Error("No commander token found. Please log in again.");
+    }
+
+    try {
+        const response = await axios.get(`${API_URL}/army/status`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.error || "Failed to load army status";
+    }
+};

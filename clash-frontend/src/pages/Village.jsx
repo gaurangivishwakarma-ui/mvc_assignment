@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getVillageProfile, getShopCatalog } from '../api/village';
+import { getVillageProfile, getShopCatalog, getArmyCatalog, getArmyStatus } from '../api/village';
 
 
 const BUILDING_ASSETS = {
@@ -56,6 +56,22 @@ const styles = {
         boxShadow: 'inset 0px 2px 4px rgba(0,0,0,0.8)'
     },
     logoutBtn: { width: 'auto', padding: '8px 15px', margin: '0', fontSize: '14px' },
+    dashboardBox: {
+        background: 'rgba(0,0,0,0.6)',
+        border: '2px solid #7c6248',
+        borderRadius: '8px',
+        padding: '12px',
+        color: '#fff',
+        fontWeight: '800',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: '8px',
+        marginTop: '15px',
+        boxShadow: 'inset 0px 2px 4px rgba(0,0,0,0.8)',
+        width: '100%',
+        boxSizing: 'border-box'
+    },
 
     mapViewport: {
         flex: 1,
@@ -130,6 +146,9 @@ export default function Village() {
     const [error, setError] = useState(null);
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [shopCatalog, setShopCatalog] = useState([]);
+    const [isArmyOpen, setIsArmyOpen] = useState(false);
+    const [armyCatalog, setArmyCatalog] = useState([]);
+    const [armyStatus, setArmyStatus] = useState([]);
 
     useEffect(() => {
         const loadVillage = async () => {
@@ -150,13 +169,30 @@ export default function Village() {
             }
         };
 
+        const loadArmy = async () => {
+            try {
+                const catalog = await getArmyCatalog();
+                setArmyCatalog(catalog.troops_available || []);
+                const status = await getArmyStatus();
+                setArmyStatus(status.army || []);
+            } catch (err) {
+                console.error("Army Load Error:", err);
+            }
+        };
+
         loadVillage();
         loadShop();
+        loadArmy();
     }, [navigate]);
 
     const handleBuyBuilding = async (item) => {
         alert(`Purchasing ${item.name}! Processing with coordinates next.`);
         setIsShopOpen(false);
+    };
+
+    const handleTrainTroop = async (troop) => {
+        alert(`Training ${troop.troop_type}! Level ${troop.level_req}.`);
+        setIsArmyOpen(false);
     };
 
     const handleLogout = () => {
@@ -177,13 +213,19 @@ export default function Village() {
                     <div>
                         <span style={styles.levelBadge}>Town Hall Level {player.village_level || 1}</span>
                     </div>
+
+                    <div style={styles.dashboardBox}>
+                        <div style={{ color: '#aaa', fontSize: '12px', textAlign: 'center', width: '100%', borderBottom: '1px solid #444', paddingBottom: '4px', marginBottom: '4px' }}>DASHBOARD</div>
+                        <div>🪙 {player.balances?.gold || 0} Gold</div>
+                        <div>⚗️ {player.balances?.elixir || 0} Elixir</div>
+                        <div>🏠 {deployedBuildings.length} Buildings</div>
+                        <div style={{ fontSize: '12px' }}>⚔️ Army: {armyStatus.length > 0 ? armyStatus.map(t => `${t.quantity} ${t.troop_type}`).join(', ') : 'None'}</div>
+                    </div>
+
+                    <button className="coc-button" style={{ ...styles.actionButton, ...styles.attackButton, marginTop: '15px' }}>ATTACK!</button>
                 </div>
 
-                <button className="coc-button" style={{ ...styles.actionButton, ...styles.attackButton }}>ATTACK!</button>
-
                 <div style={styles.resources}>
-                    <div style={styles.resourceBox}>🪙 {player.balances?.gold || 0}</div>
-                    <div style={styles.resourceBox}>⚗️ {player.balances?.elixir || 0}</div>
                     <button className="coc-button" style={styles.logoutBtn} onClick={handleLogout}>LOGOUT</button>
                 </div>
             </div>
@@ -222,7 +264,7 @@ export default function Village() {
 
             <div style={styles.bottomBar}>
                 <button className="coc-button" style={styles.actionButton} onClick={() => setIsShopOpen(true)}>SHOP</button>
-                <button className="coc-button" style={styles.actionButton}>ARMY</button>
+                <button className="coc-button" style={styles.actionButton} onClick={() => setIsArmyOpen(true)}>ARMY</button>
             </div>
 
             {isShopOpen && (
@@ -245,6 +287,34 @@ export default function Village() {
                                         onClick={() => handleBuyBuilding(item)}
                                     >
                                         Buy: {item.cost_type === 'elixir' ? '⚗️' : '🪙'} {item.cost}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isArmyOpen && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalBox}>
+                        <div style={styles.modalHeader}>
+                            <h2 style={{ margin: 0, fontWeight: '900' }}>TRAIN TROOPS</h2>
+                            <button className="coc-button" style={{ width: '40px', margin: 0, padding: '5px' }} onClick={() => setIsArmyOpen(false)}>X</button>
+                        </div>
+                        <div style={styles.shopGrid}>
+                            {armyCatalog.filter(troop => troop.level_req <= (player?.village_level || 1)).map((troop, idx) => (
+                                <div key={idx} style={styles.shopItem}>
+                                    <div>
+                                        <div style={{ fontWeight: '900', fontSize: '16px', textTransform: 'capitalize' }}>{troop.troop_type} (Lv {troop.level_req})</div>
+                                        <div style={{ fontSize: '12px', color: '#aaa' }}>Space: {troop.housing_space} | HP: {troop.hit_points} | Dmg: {troop.damage}</div>
+                                    </div>
+                                    <button
+                                        className="coc-button"
+                                        style={{ width: 'auto', padding: '8px 15px', fontSize: '13px', margin: 0 }}
+                                        onClick={() => handleTrainTroop(troop)}
+                                    >
+                                        Train: ⚗️ {troop.elixir_cost}
                                     </button>
                                 </div>
                             ))}
