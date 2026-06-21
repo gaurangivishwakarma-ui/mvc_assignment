@@ -1,0 +1,85 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100vh;
+  /* Apply our new font globally */
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Add this to the bottom of src/index.css */
+
+/* --- Game Input Styles --- */
+.coc-input {
+  width: 100%;
+  padding: 15px;
+  margin: 10px 0;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 3px solid #7c6248;
+  background: #fff;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  box-shadow: inset 0px 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Adds a golden border and glow when the player clicks to type */
+.coc-input:focus {
+  border-color: #ffce00;
+  box-shadow: inset 0px 4px 6px rgba(0, 0, 0, 0.1), 0 0 10px rgba(255, 206, 0, 0.6);
+}
+
+/* --- Game Button Styles --- */
+.coc-button {
+  width: 100%;
+  background: linear-gradient(to bottom, #aee536, #6cb211);
+  color: #fff;
+  padding: 16px;
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 3px solid #1c3b00;
+  border-radius: 8px;
+  cursor: pointer;
+  text-shadow: 2px 2px 0px #315800;
+  box-shadow: inset 0px 2px 0px rgba(255, 255, 255, 0.4), 0px 6px 0px #427500;
+  margin-top: 20px;
+  transition: all 0.1s ease;
+}
+
+/* Brightens the button and lifts it slightly when the mouse is over it */
+.coc-button:hover {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+  box-shadow: inset 0px 2px 0px rgba(255, 255, 255, 0.6), 0px 8px 0px #427500;
+}
+
+/* Pushes the button physically down when clicked */
+.coc-button:active {
+  transform: translateY(6px);
+  box-shadow: inset 0px 2px 0px rgba(255, 255, 255, 0.4), 0px 0px 0px #427500;
+  filter: brightness(0.9);
+}
+
+/* Grey out the button when it is loading/disabled */
+.coc-button:disabled {
+  background: linear-gradient(to bottom, #888, #555);
+  border-color: #333;
+  box-shadow: inset 0px 2px 0px rgba(255, 255, 255, 0.2), 0px 6px 0px #222;
+  text-shadow: 2px 2px 0px #222;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
