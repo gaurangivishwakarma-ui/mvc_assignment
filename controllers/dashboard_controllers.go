@@ -35,9 +35,7 @@ func GetDashboard(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		rows, err := queries.GetDashboardData(r.Context(), pgPlayerID)
 		if err != nil || len(rows) == 0 {

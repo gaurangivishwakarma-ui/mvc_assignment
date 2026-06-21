@@ -6,7 +6,6 @@ import (
 
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
 	"github.com/gaurangi/mvc_assignment/middleware"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,9 +25,7 @@ func TrainTroops(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		var req TrainTroopRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Quantity <= 0 {
@@ -152,9 +149,7 @@ func GetArmyStatus(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		rows, err := queries.GetArmyStatus(r.Context(), pgPlayerID)
 		if err != nil {

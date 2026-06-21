@@ -26,9 +26,7 @@ func MoveBuilding(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		var req MoveBuildingRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

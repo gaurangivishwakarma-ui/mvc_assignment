@@ -23,9 +23,7 @@ func UpgradeBuilding(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		var req UpgradeRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -112,9 +110,7 @@ func UpgradePlayerVillage(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		tx, err := pool.Begin(r.Context())
 		if err != nil {

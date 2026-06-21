@@ -8,7 +8,6 @@ import (
 
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
 	"github.com/gaurangi/mvc_assignment/middleware"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,9 +18,7 @@ func CollectResources(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		buildings, err := queries.GetResourceBuildingsForCollection(r.Context(), pgPlayerID)
 		if err != nil {

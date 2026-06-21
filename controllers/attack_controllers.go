@@ -34,9 +34,7 @@ func AttackOpponent(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedAttackerUUID, _ := uuid.Parse(playerIDStr)
-		pgAttackerID := pgtype.UUID{Bytes: parsedAttackerUUID, Valid: true}
+		pgAttackerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		var req InstantBattleRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

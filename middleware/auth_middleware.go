@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type contextKey string
@@ -48,7 +50,15 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 		playerIDStr := claims["player_id"].(string)
 
-		ctx := context.WithValue(r.Context(), PlayerIDKey, playerIDStr)
+		parsedUUID, err := uuid.Parse(playerIDStr)
+		if err != nil {
+			http.Error(w, "Invalid token payload", http.StatusUnauthorized)
+			return
+		}
+
+		pgPlayerID := pgtype.UUID{Bytes: parsedUUID, Valid: true}
+
+		ctx := context.WithValue(r.Context(), PlayerIDKey, pgPlayerID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}

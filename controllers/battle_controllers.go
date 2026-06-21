@@ -27,9 +27,7 @@ func GetMatch(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		attacker, err := queries.GetPlayerProfile(r.Context(), pgPlayerID)
 		if err != nil {
@@ -133,9 +131,7 @@ func GetBattleReplay(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-		parsedPlayerUUID, _ := uuid.Parse(playerIDStr)
-		pgPlayerID := pgtype.UUID{Bytes: parsedPlayerUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		if battle.AttackerID != pgPlayerID && battle.DefenderID != pgPlayerID {
 			http.Error(w, "Unauthorized: You did not participate in this battle", http.StatusForbidden)

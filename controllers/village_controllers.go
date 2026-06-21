@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
@@ -18,14 +17,7 @@ func GetVillage(queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		playerIDStr := r.Context().Value(middleware.PlayerIDKey).(string)
-
-		parsedUUID, err := uuid.Parse(playerIDStr)
-		if err != nil {
-			http.Error(w, "Invalid player ID format", http.StatusBadRequest)
-			return
-		}
-		pgPlayerID := pgtype.UUID{Bytes: parsedUUID, Valid: true}
+		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
 		profile, err := queries.GetPlayerProfile(r.Context(), pgPlayerID)
 		if err != nil {
