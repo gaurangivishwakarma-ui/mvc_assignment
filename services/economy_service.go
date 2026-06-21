@@ -50,7 +50,7 @@ func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch storage capacity")
 	}
 
-	var goldCap int32 = 1000 //cap of 1000 if
+	var goldCap int32 = 1000 //cap of 1000 if no storage builings yet
 	var elixirCap int32 = 1000
 
 	for _, s := range storages {

@@ -94,3 +94,12 @@ func CompleteBuild(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.U
 		"placement_id": req.PlacementID,
 	}, http.StatusOK, nil
 }
+
+func GetShopCatalog(ctx context.Context, queries *db.Queries) ([]db.Building, int, error) {
+	catalog, err := queries.GetShopCatalog(ctx)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch shop catalog")
+	}
+
+	return catalog, http.StatusOK, nil
+}
