@@ -1,13 +1,16 @@
 -- name: GetOpponentVillage :many
 SELECT 
-    id AS placement_id, 
-    building_id, 
-    building_type, 
-    current_level, 
-    x_coords, 
-    y_coords
-FROM buildings_owned
-WHERE player_id = $1;
+    bo.id AS placement_id, 
+    bo.building_id, 
+    bo.building_type, 
+    bo.current_level, 
+    bo.x_coords, 
+    bo.y_coords,
+    b.width,
+    b.breadth
+FROM buildings_owned bo
+JOIN buildings b ON bo.building_id = b.id
+WHERE bo.player_id = $1;
 
 -- name: GetSuitableOpponent :one
 SELECT 
@@ -82,6 +85,12 @@ WHERE player_id = sqlc.arg('player_id')
 -- name: DeductPlayerTroops :exec
 UPDATE troops_owned 
 SET quantity = quantity - sqlc.arg('quantity')
+WHERE player_id = sqlc.arg('player_id') 
+  AND troop_type = sqlc.arg('troop_type')
+  AND current_level = sqlc.arg('current_level');
+
+-- name: DeletePlayerTroops :exec
+DELETE FROM troops_owned
 WHERE player_id = sqlc.arg('player_id') 
   AND troop_type = sqlc.arg('troop_type')
   AND current_level = sqlc.arg('current_level');
