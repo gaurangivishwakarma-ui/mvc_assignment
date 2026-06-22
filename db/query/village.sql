@@ -52,7 +52,8 @@ INSERT INTO buildings_owned (
 
 -- name: MarkBuildingAsBuilt :execrows
 UPDATE buildings_owned
-SET is_built = true
+SET is_built = true,
+    last_collected_at = NOW()
 WHERE id = $1
   AND player_id = $2
   AND is_built = false
