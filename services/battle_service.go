@@ -44,6 +44,8 @@ func GetMatch(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID) 
 			CurrentLevel: row.CurrentLevel,
 			XCoords:      row.XCoords,
 			YCoords:      row.YCoords,
+			Width:        row.Width,
+			Breadth:      row.Breadth,
 		})
 	}
 	if village == nil {

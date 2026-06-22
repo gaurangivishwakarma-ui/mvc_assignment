@@ -122,12 +122,20 @@ func AttackOpponent(ctx context.Context, pool *pgxpool.Pool, pgAttackerID pgtype
 			return nil, http.StatusBadRequest, fmt.Errorf("Insufficient army composition! You tried deploying more troops than you have trained.")
 		}
 
-		err = qtx.DeductPlayerTroops(ctx, db.DeductPlayerTroopsParams{
-			PlayerID:     pgAttackerID,
-			TroopType:    t.TroopType,
-			CurrentLevel: t.Level,
-			Quantity:     t.Quantity,
-		})
+		if ownedQty == int32(t.Quantity) {
+			err = qtx.DeletePlayerTroops(ctx, db.DeletePlayerTroopsParams{
+				PlayerID:     pgAttackerID,
+				TroopType:    t.TroopType,
+				CurrentLevel: t.Level,
+			})
+		} else {
+			err = qtx.DeductPlayerTroops(ctx, db.DeductPlayerTroopsParams{
+				PlayerID:     pgAttackerID,
+				TroopType:    t.TroopType,
+				CurrentLevel: t.Level,
+				Quantity:     t.Quantity,
+			})
+		}
 		if err != nil {
 			return nil, http.StatusInternalServerError, fmt.Errorf("Database transaction failed during troop deduction")
 		}

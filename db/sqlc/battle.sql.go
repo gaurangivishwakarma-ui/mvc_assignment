@@ -86,6 +86,24 @@ func (q *Queries) DeductPlayerTroops(ctx context.Context, arg DeductPlayerTroops
 	return err
 }
 
+const deletePlayerTroops = `-- name: DeletePlayerTroops :exec
+DELETE FROM troops_owned
+WHERE player_id = $1 
+  AND troop_type = $2
+  AND current_level = $3
+`
+
+type DeletePlayerTroopsParams struct {
+	PlayerID     pgtype.UUID `json:"player_id"`
+	TroopType    string      `json:"troop_type"`
+	CurrentLevel int32       `json:"current_level"`
+}
+
+func (q *Queries) DeletePlayerTroops(ctx context.Context, arg DeletePlayerTroopsParams) error {
+	_, err := q.db.Exec(ctx, deletePlayerTroops, arg.PlayerID, arg.TroopType, arg.CurrentLevel)
+	return err
+}
+
 const getArmyCombatPower = `-- name: GetArmyCombatPower :one
 WITH deployed AS (
     SELECT unnest($1::varchar[]) AS troop_type,
@@ -161,14 +179,17 @@ func (q *Queries) GetDefenderDefensePower(ctx context.Context, playerID pgtype.U
 
 const getOpponentVillage = `-- name: GetOpponentVillage :many
 SELECT 
-    id AS placement_id, 
-    building_id, 
-    building_type, 
-    current_level, 
-    x_coords, 
-    y_coords
-FROM buildings_owned
-WHERE player_id = $1
+    bo.id AS placement_id, 
+    bo.building_id, 
+    bo.building_type, 
+    bo.current_level, 
+    bo.x_coords, 
+    bo.y_coords,
+    b.width,
+    b.breadth
+FROM buildings_owned bo
+JOIN buildings b ON bo.building_id = b.id
+WHERE bo.player_id = $1
 `
 
 type GetOpponentVillageRow struct {
@@ -178,6 +199,8 @@ type GetOpponentVillageRow struct {
 	CurrentLevel int32       `json:"current_level"`
 	XCoords      int32       `json:"x_coords"`
 	YCoords      int32       `json:"y_coords"`
+	Width        int32       `json:"width"`
+	Breadth      int32       `json:"breadth"`
 }
 
 func (q *Queries) GetOpponentVillage(ctx context.Context, playerID pgtype.UUID) ([]GetOpponentVillageRow, error) {
@@ -196,6 +219,8 @@ func (q *Queries) GetOpponentVillage(ctx context.Context, playerID pgtype.UUID) 
 			&i.CurrentLevel,
 			&i.XCoords,
 			&i.YCoords,
+			&i.Width,
+			&i.Breadth,
 		); err != nil {
 			return nil, err
 		}
