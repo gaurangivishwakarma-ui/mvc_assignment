@@ -9,19 +9,29 @@ import (
 	"github.com/gaurangi/mvc_assignment/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func CheckOverlap(x1, y1, w1, h1 int32, x2, y2, w2, h2 int32) bool {
 	return !(x1+w1 <= x2 || x1 >= x2+w2 || y1+h1 <= y2 || y1 >= y2+h2)
 }
 
-func PurchaseBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID, req models.PurchaseBuildingRequest) (map[string]interface{}, int, error) {
-	catalogBuilding, err := queries.GetBuildingByID(ctx, req.BuildingID)
+func PurchaseBuilding(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUID, req models.PurchaseBuildingRequest) (map[string]interface{}, int, error) {
+	queries := db.New(pool)
+	
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Database error starting transaction")
+	}
+	defer tx.Rollback(ctx)
+	qtx := queries.WithTx(tx)
+
+	catalogBuilding, err := qtx.GetBuildingByID(ctx, req.BuildingID)
 	if err != nil {
 		return nil, http.StatusNotFound, fmt.Errorf("Building not found in catalog")
 	}
 
-	existingBuildings, err := queries.GetPlayerBuildingsWithDimensions(ctx, pgPlayerID)
+	existingBuildings, err := qtx.GetPlayerBuildingsWithDimensions(ctx, pgPlayerID)
 	if err == nil {
 		for _, b := range existingBuildings {
 			overlaps := CheckOverlap(
@@ -41,7 +51,7 @@ func PurchaseBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		ID:        pgPlayerID,
 	}
 
-	_, err = queries.DeductResources(ctx, deductParams)
+	_, err = qtx.DeductResources(ctx, deductParams)
 	if err != nil {
 		return nil, http.StatusPaymentRequired, fmt.Errorf("Insufficient resources to purchase this building")
 	}
@@ -58,10 +68,14 @@ func PurchaseBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		YCoords:      req.YCoords,
 	}
 
-	newBuilding, err := queries.PlaceBuilding(ctx, placeParams)
+	newBuilding, err := qtx.PlaceBuilding(ctx, placeParams)
 	if err != nil {
 		fmt.Printf("DB Error placing building: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to place building")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to commit purchase transaction")
 	}
 
 	return map[string]interface{}{

@@ -9,9 +9,10 @@ import (
 	"github.com/gaurangi/mvc_assignment/models"
 	"github.com/gaurangi/mvc_assignment/services"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func PurchaseBuilding(queries *db.Queries) http.HandlerFunc {
+func PurchaseBuilding(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -26,7 +27,7 @@ func PurchaseBuilding(queries *db.Queries) http.HandlerFunc {
 
 		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
-		result, statusCode, err := services.PurchaseBuilding(r.Context(), queries, pgPlayerID, req)
+		result, statusCode, err := services.PurchaseBuilding(r.Context(), pool, pgPlayerID, req)
 		if err != nil {
 			http.Error(w, err.Error(), statusCode)
 			return
