@@ -31,6 +31,42 @@ func (q *Queries) GetOwnedBuildingPositionInfo(ctx context.Context, id pgtype.UU
 	return i, err
 }
 
+const getShopCatalog = `-- name: GetShopCatalog :many
+SELECT id, building_type, level, name, width, breadth, cost_type, cost, hit_points, level_req FROM buildings 
+WHERE level = 1
+`
+
+func (q *Queries) GetShopCatalog(ctx context.Context) ([]Building, error) {
+	rows, err := q.db.Query(ctx, getShopCatalog)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Building
+	for rows.Next() {
+		var i Building
+		if err := rows.Scan(
+			&i.ID,
+			&i.BuildingType,
+			&i.Level,
+			&i.Name,
+			&i.Width,
+			&i.Breadth,
+			&i.CostType,
+			&i.Cost,
+			&i.HitPoints,
+			&i.LevelReq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateBuildingPosition = `-- name: UpdateBuildingPosition :exec
 UPDATE buildings_owned
 SET x_coords = $2, y_coords = $3

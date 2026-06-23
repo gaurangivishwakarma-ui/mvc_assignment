@@ -12,6 +12,8 @@ type OpponentBuilding struct {
 	CurrentLevel int32  `json:"current_level"`
 	XCoords      int32  `json:"x_coords"`
 	YCoords      int32  `json:"y_coords"`
+	Width        int32  `json:"width"`
+	Breadth      int32  `json:"breadth"`
 }
 
 type BattleReplayResponse struct {

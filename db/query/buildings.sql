@@ -8,3 +8,7 @@ WHERE bo.id = $1;
 UPDATE buildings_owned
 SET x_coords = $2, y_coords = $3
 WHERE id = $1 AND player_id = $4;
+
+-- name: GetShopCatalog :many
+SELECT * FROM buildings 
+WHERE level = 1;

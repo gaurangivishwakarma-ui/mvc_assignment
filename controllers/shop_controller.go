@@ -9,9 +9,10 @@ import (
 	"github.com/gaurangi/mvc_assignment/models"
 	"github.com/gaurangi/mvc_assignment/services"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func PurchaseBuilding(queries *db.Queries) http.HandlerFunc {
+func PurchaseBuilding(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -26,7 +27,7 @@ func PurchaseBuilding(queries *db.Queries) http.HandlerFunc {
 
 		pgPlayerID := r.Context().Value(middleware.PlayerIDKey).(pgtype.UUID)
 
-		result, statusCode, err := services.PurchaseBuilding(r.Context(), queries, pgPlayerID, req)
+		result, statusCode, err := services.PurchaseBuilding(r.Context(), pool, pgPlayerID, req)
 		if err != nil {
 			http.Error(w, err.Error(), statusCode)
 			return
@@ -54,6 +55,25 @@ func CompleteBuild(queries *db.Queries) http.HandlerFunc {
 		}
 
 		result, statusCode, err := services.CompleteBuild(r.Context(), queries, pgPlayerID, req)
+		if err != nil {
+			http.Error(w, err.Error(), statusCode)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		json.NewEncoder(w).Encode(result)
+	}
+}
+
+func GetShopCatalog(queries *db.Queries) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		result, statusCode, err := services.GetShopCatalog(r.Context(), queries)
 		if err != nil {
 			http.Error(w, err.Error(), statusCode)
 			return
