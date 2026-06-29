@@ -1,3 +1,4 @@
+import SystemPopup from './SystemPopup';
 import { useState, useEffect } from 'react';
 import { attackOpponent, getArmyStatus } from '../api/village';
 import explosionGif from '../assets/explosion.gif';
@@ -10,6 +11,8 @@ const TOTAL_ANIM_MS = ANIM_MARCH_MS + ANIM_EXPLODE_MS;
 
 export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHOP_ASSETS, TROOP_ASSETS }) {
     const [army, setArmy] = useState([]);
+    const [systemPopupMsg, setSystemPopupMsg] = useState(null);
+    const showPopup = (msg) => setSystemPopupMsg(msg);
     const [deployments, setDeployments] = useState({});
     const [selectedTroopKey, setSelectedTroopKey] = useState(null);
     const [gridDeployedTroops, setGridDeployedTroops] = useState([]);
@@ -38,7 +41,7 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
     const handleGridClick = (e) => {
         if (battlePhase !== 'deploying') return;
         if (!selectedTroopKey) {
-            alert('Select a troop from the bottom panel first!');
+            showPopup('Select a troop from the bottom panel first!');
             return;
         }
         const remaining = deployments[selectedTroopKey] || 0;
@@ -62,7 +65,7 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
     };
 
     const handleAttack = async () => {
-        if (!gridDeployedTroops.length) { alert('Deploy at least 1 troop!'); return; }
+        if (!gridDeployedTroops.length) { showPopup('Deploy at least 1 troop!'); return; }
 
         const troopMap = {};
         gridDeployedTroops.forEach(t => {
@@ -123,7 +126,7 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
             }, 1800);
 
         } catch (err) {
-            alert(`Attack Failed: ${err}`);
+            showPopup(`Attack Failed: ${err}`);
             setBattlePhase('deploying');
         }
     };

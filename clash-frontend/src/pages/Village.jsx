@@ -1,3 +1,4 @@
+import SystemPopup from '../components/SystemPopup';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getVillageProfile, getShopCatalog, getArmyCatalog, getArmyStatus, trainTroops, purchaseBuilding, upgradeVillage, getVillageUpgradeCost, upgradeBuilding, getBuildingUpgradeCost, completeBuildingUpgrade, moveBuilding, getMatch, collectResources } from '../api/village';
@@ -285,6 +286,8 @@ const styles = {
 export default function Village() {
     const navigate = useNavigate();
     const [player, setPlayer] = useState(null);
+    const [systemPopupMsg, setSystemPopupMsg] = useState(null);
+    const showPopup = (msg) => setSystemPopupMsg(msg);
     const [error, setError] = useState(null);
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [shopCatalog, setShopCatalog] = useState([]);
@@ -307,6 +310,8 @@ export default function Village() {
     const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
     const [isBattleActive, setIsBattleActive] = useState(false);
     const [collectionFloating, setCollectionFloating] = useState(null);
+    const [clickedBuildingOnMap, setClickedBuildingOnMap] = useState(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -321,7 +326,7 @@ export default function Village() {
                         if (next[id] === 0) {
                             completeBuildingUpgrade({ placement_id: id }).then(() => {
                                 getVillageProfile().then(setPlayer);
-                            }).catch(err => alert(`Completion failed: ${err}`));
+                            }).catch(err => showPopup(`Completion failed: ${err}`));
                         }
                     }
                 }
@@ -369,7 +374,6 @@ export default function Village() {
     const handleBuyBuilding = async (item) => {
         setSelectedBuildingToPlace(item);
         setIsShopOpen(false);
-        alert(`Select a tile on the grid to place your ${item.name}!`);
     };
 
     const handleTileClick = async (x, y) => {
@@ -380,11 +384,10 @@ export default function Village() {
                     new_x: x,
                     new_y: y
                 });
-                alert(result.status || `Successfully moved building!`);
                 const profileData = await getVillageProfile();
                 setPlayer(profileData);
             } catch (err) {
-                alert(`Move Failed: ${err}`);
+                showPopup(`Move Failed: ${err}`);
             } finally {
                 setSelectedBuildingToMove(null);
             }
@@ -399,7 +402,6 @@ export default function Village() {
                 x_coords: x,
                 y_coords: y
             });
-            alert(result.message || `Successfully placed ${selectedBuildingToPlace.name}!`);
 
             if (result.building && result.building.id) {
                 setUpgradingTimers(prev => ({ ...prev, [result.building.id]: 5 }));
@@ -408,7 +410,7 @@ export default function Village() {
             const profileData = await getVillageProfile();
             setPlayer(profileData);
         } catch (err) {
-            alert(`Placement Failed: ${err}`);
+            showPopup(`Placement Failed: ${err}`);
         } finally {
             setSelectedBuildingToPlace(null);
         }
@@ -431,7 +433,7 @@ export default function Village() {
                 level: troop.level_req,
                 quantity: qty
             });
-            alert(result.message);
+            showPopup(result.message);
 
             const [profileData, statusData] = await Promise.all([
                 getVillageProfile(),
@@ -443,7 +445,7 @@ export default function Village() {
             setTroopQuantities(prev => ({ ...prev, [key]: 1 }));
             setIsArmyOpen(false);
         } catch (err) {
-            alert(`Training Failed: ${err}`);
+            showPopup(`Training Failed: ${err}`);
         }
     };
 
@@ -453,19 +455,19 @@ export default function Village() {
             setVillageUpgradeCostData(costData);
             setIsVillageUpgradeModalOpen(true);
         } catch (err) {
-            alert(`Failed to fetch upgrade info: ${err}`);
+            showPopup(`Failed to fetch upgrade info: ${err}`);
         }
     };
 
     const handleConfirmUpgradeVillage = async () => {
         try {
             const result = await upgradeVillage();
-            alert(result.message || "Town Hall upgraded successfully!");
+            showPopup(result.message || "Town Hall upgraded successfully!");
             const data = await getVillageProfile();
             setPlayer(data);
             setIsVillageUpgradeModalOpen(false);
         } catch (err) {
-            alert(`Upgrade Failed: ${err}`);
+            showPopup(`Upgrade Failed: ${err}`);
         }
     };
 
@@ -473,7 +475,7 @@ export default function Village() {
         try {
             const costData = await getBuildingUpgradeCost(building.placement_id);
             if (costData.is_max_level) {
-                alert(costData.message || "Building is already at max level!");
+                showPopup(costData.message || "Building is already at max level!");
                 return;
             }
             setBuildingUpgradeModal({
@@ -484,7 +486,7 @@ export default function Village() {
                 name: costData.name || building.building_type?.replace(/_/g, ' ')
             });
         } catch (err) {
-            alert(`Failed to fetch upgrade cost: ${err}`);
+            showPopup(`Failed to fetch upgrade cost: ${err}`);
         }
     };
 
@@ -493,12 +495,12 @@ export default function Village() {
         setBuildingUpgradeModal(null);
         try {
             const result = await upgradeBuilding({ placement_id: building.placement_id });
-            alert(result.message || 'Upgrade started!');
+            showPopup(result.message || 'Upgrade started!');
             setUpgradingTimers(prev => ({ ...prev, [building.placement_id]: 5 }));
             const data = await getVillageProfile();
             setPlayer(data);
         } catch (err) {
-            alert(`Upgrade Failed: ${err}`);
+            showPopup(`Upgrade Failed: ${err}`);
         }
     };
 
@@ -508,7 +510,7 @@ export default function Village() {
             setMatchData(data);
             setIsMatchModalOpen(true);
         } catch (err) {
-            alert(`Matchmaking Failed: ${err}`);
+            showPopup(`Matchmaking Failed: ${err}`);
         }
     };
 
@@ -519,12 +521,12 @@ export default function Village() {
                 setCollectionFloating({ gold: data.gold_looted, elixir: data.elixir_looted });
                 setTimeout(() => setCollectionFloating(null), 2000);
             } else {
-                alert(data.message);
+                showPopup(data.message);
             }
             const profileData = await getVillageProfile();
             setPlayer(profileData);
         } catch (err) {
-            alert(`Collection Failed: ${err}`);
+            showPopup(`Collection Failed: ${err}`);
         }
     };
 
@@ -550,8 +552,38 @@ export default function Village() {
 
     const allBuildings = [townHallObj, ...deployedBuildings];
 
+    const floatingImageSrc = selectedBuildingToMove 
+        ? (SHOP_ASSETS[`${selectedBuildingToMove.building_type}${selectedBuildingToMove.current_level > 1 ? `_${selectedBuildingToMove.current_level}` : ''}`] || SHOP_ASSETS[selectedBuildingToMove.building_type] || BUILDING_ASSETS[selectedBuildingToMove.building_type?.toUpperCase()] || BUILDING_ASSETS.DEFAULT)
+        : (selectedBuildingToPlace ? (SHOP_ASSETS[selectedBuildingToPlace.building_type] || BUILDING_ASSETS.DEFAULT) : null);
+
     return (
-        <div style={styles.container}>
+        <div 
+            style={styles.container}
+            onMouseMove={(e) => {
+                if (selectedBuildingToMove || selectedBuildingToPlace) {
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                }
+            }}
+        >
+            {(selectedBuildingToMove || selectedBuildingToPlace) && floatingImageSrc && (
+                <div style={{
+                    position: 'fixed',
+                    left: mousePos.x,
+                    top: mousePos.y,
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                    zIndex: 9999,
+                    opacity: 0.75,
+                    width: '100px',
+                    height: '100px'
+                }}>
+                    <img 
+                        src={floatingImageSrc} 
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.5))' }} 
+                        alt="Hovering"
+                    />
+                </div>
+            )}
             <div style={styles.topBar}>
                 <div style={styles.playerInfo}>
                     <div style={styles.plaqueContainer}>
@@ -592,6 +624,12 @@ export default function Village() {
                 </div>
 
                 <div style={styles.resources}>
+                    <div style={styles.resourceBox}>
+                        🪙 {player.balances?.gold || 0}
+                    </div>
+                    <div style={styles.resourceBox}>
+                        ⚗️ {player.balances?.elixir || 0}
+                    </div>
                     <button className="coc-button" style={styles.actionButton} onClick={handleLogout}>
                         LOGOUT
                     </button>
@@ -639,6 +677,11 @@ export default function Village() {
                                     gridColumn: `${b.x_coords || 1} / span ${b.width || 2}`,
                                     gridRow: `${b.y_coords || 1} / span ${b.breadth || b.height || 2}`
                                 }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectedBuildingToPlace || selectedBuildingToMove) return;
+                                    setClickedBuildingOnMap(b);
+                                }}
                             >
                                 <img
                                     src={imageSrc}
@@ -650,7 +693,9 @@ export default function Village() {
                                         e.target.parentNode.style.border = '2px solid gold';
                                     }}
                                 />
-                                <div style={styles.buildingLabel}>{b.name}</div>
+                                <div style={{...styles.buildingLabel, textTransform: 'capitalize'}}>
+                                    {b.name?.includes('Lv') ? b.name : `${b.name || b.building_type?.replace(/_/g, ' ')} Lv ${b.current_level || 1}`}
+                                </div>
 
                                 {collectionFloating && collectionFloating.gold > 0 && isGoldMine && (
                                     <div className="floating-resource" style={{ position: 'absolute', top: '0px', color: '#ffce00', fontWeight: '900', fontSize: '24px', textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000', pointerEvents: 'none', zIndex: 50 }}>
@@ -672,9 +717,6 @@ export default function Village() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
                     <button className="coc-button" style={styles.actionButton} onClick={() => setIsShopOpen(true)}>
                         SHOP
-                    </button>
-                    <button className="coc-button" style={styles.actionButton} onClick={() => setIsMoveModalOpen(true)}>
-                        MOVE
                     </button>
                 </div>
                 <button className="coc-button" style={styles.actionButton} onClick={() => setIsArmyOpen(true)}>
@@ -757,7 +799,6 @@ export default function Village() {
                                             onClick={() => {
                                                 setSelectedBuildingToMove(b);
                                                 setIsMoveModalOpen(false);
-                                                alert(`Select a new tile on the grid to move your ${b.name || b.building_type?.replace(/_/g, ' ')}!`);
                                             }}
                                         >
                                             Move
@@ -985,52 +1026,11 @@ export default function Village() {
                                                 <div style={{ textTransform: 'capitalize' }}>{b.name || b.building_type?.replace(/_/g, ' ')}</div>
                                                 <div style={{ color: '#aaa', fontSize: '12px' }}>Lv {b.current_level || 1}</div>
                                             </div>
-                                            {b.placement_id && (
-                                                upgradingTimers[b.placement_id] > 0 ? (
-                                                    <div style={{ color: '#ffce00', fontWeight: 'bold', fontSize: '12px' }}>Upgrading... {upgradingTimers[b.placement_id]}s</div>
-                                                ) : (
-                                                    <button
-                                                        className="coc-button"
-                                                        style={{ width: 'auto', padding: '5px 10px', fontSize: '12px', margin: 0 }}
-                                                        onClick={() => handleUpgradeBuildingClick(b)}
-                                                    >
-                                                        Upgrade ⬆
-                                                    </button>
-                                                )
+                                            {b.placement_id && upgradingTimers[b.placement_id] > 0 && (
+                                                <div style={{ color: '#ffce00', fontWeight: 'bold', fontSize: '12px' }}>Upgrading... {upgradingTimers[b.placement_id]}s</div>
                                             )}
                                         </div>
                                     )) : <div style={{ textAlign: 'center', color: '#aaa' }}>No buildings placed yet.</div>}
-
-                                    {buildingUpgradeModal && (
-                                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                                            <div style={{ background: 'linear-gradient(to bottom, #3a2512, #24160a)', border: '5px solid #ffce00', borderRadius: '16px', padding: '28px', width: '340px', color: '#fff', textAlign: 'center', boxShadow: '0 0 40px rgba(255,206,0,0.35)' }}>
-                                                <h3 style={{ color: '#ffce00', margin: '0 0 14px', fontSize: '20px', textTransform: 'capitalize' }}>
-                                                    Upgrade {buildingUpgradeModal.name}?
-                                                </h3>
-                                                <div style={{ fontSize: '15px', marginBottom: '8px', color: '#ccc' }}>
-                                                    Level {buildingUpgradeModal.nextLevel - 1} → <span style={{ color: '#ffce00', fontWeight: 'bold' }}>Level {buildingUpgradeModal.nextLevel}</span>
-                                                </div>
-                                                {buildingUpgradeModal.cost !== null ? (
-                                                    <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>
-                                                        Cost:&nbsp;
-                                                        <span style={{ color: '#ffce00' }}>
-                                                            {buildingUpgradeModal.costType === 'elixir' ? '⚗️' : '🪙'}&nbsp;{buildingUpgradeModal.cost}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ color: '#aaa', marginBottom: '20px', fontSize: '14px' }}>Max level reached or cost unavailable.</div>
-                                                )}
-                                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                                                    <button className="coc-button" style={{ margin: 0, padding: '8px 18px' }} onClick={handleConfirmBuildingUpgrade}>
-                                                        ✅ Confirm
-                                                    </button>
-                                                    <button className="coc-button" style={{ margin: 0, padding: '8px 18px', background: 'linear-gradient(to bottom,#888,#555)', borderColor: '#333', textShadow: 'none', boxShadow: 'none' }} onClick={() => setBuildingUpgradeModal(null)}>
-                                                        ✖ Cancel
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
                             {activeDashboardTab === 'army' && (
@@ -1043,6 +1043,79 @@ export default function Village() {
                                     )) : <div style={{ textAlign: 'center', color: '#aaa' }}>No troops trained yet.</div>}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <SystemPopup message={systemPopupMsg} onClose={() => setSystemPopupMsg(null)} />
+            {clickedBuildingOnMap && (
+                <div style={{...styles.modalOverlay, zIndex: 900}} onClick={() => setClickedBuildingOnMap(null)}>
+                    <div style={{ ...styles.modalBox, width: '300px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <div style={styles.modalHeader}>
+                            <h2 style={{ margin: 0, fontWeight: '900', textTransform: 'capitalize' }}>
+                                {clickedBuildingOnMap.name?.includes('Lv') ? clickedBuildingOnMap.name : `${clickedBuildingOnMap.name || clickedBuildingOnMap.building_type?.replace(/_/g, ' ')} Lv ${clickedBuildingOnMap.current_level || 1}`}
+                            </h2>
+                            <button className="coc-button" style={{ width: '40px', margin: 0, padding: '5px' }} onClick={() => setClickedBuildingOnMap(null)}>X</button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px' }}>
+                            <button 
+                                className="coc-button" 
+                                style={styles.actionButton} 
+                                onClick={() => {
+                                    setClickedBuildingOnMap(null);
+                                    if (clickedBuildingOnMap.building_type === 'town_hall') {
+                                        handleUpgradeVillageClick();
+                                    } else {
+                                        handleUpgradeBuildingClick(clickedBuildingOnMap);
+                                    }
+                                }}
+                            >
+                                UPGRADE
+                            </button>
+                            {clickedBuildingOnMap.building_type !== 'town_hall' && (
+                                <button 
+                                    className="coc-button" 
+                                    style={{...styles.actionButton, background: 'linear-gradient(to bottom, #f29f05, #d96d00)', borderColor: '#a64a00', boxShadow: 'inset 0px 2px 0px rgba(255,255,255,0.4), 0px 6px 0px #733000', textShadow: '2px 2px 0px #733000'}} 
+                                    onClick={() => {
+                                        setSelectedBuildingToMove(clickedBuildingOnMap);
+                                        setClickedBuildingOnMap(null);
+                                    }}
+                                >
+                                    MOVE
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {buildingUpgradeModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ background: 'linear-gradient(to bottom, #3a2512, #24160a)', border: '5px solid #ffce00', borderRadius: '16px', padding: '28px', width: '340px', color: '#fff', textAlign: 'center', boxShadow: '0 0 40px rgba(255,206,0,0.35)' }}>
+                        <h3 style={{ color: '#ffce00', margin: '0 0 14px', fontSize: '20px', textTransform: 'capitalize' }}>
+                            Upgrade {buildingUpgradeModal.name}?
+                        </h3>
+                        <div style={{ fontSize: '15px', marginBottom: '8px', color: '#ccc' }}>
+                            Level {buildingUpgradeModal.nextLevel - 1} → <span style={{ color: '#ffce00', fontWeight: 'bold' }}>Level {buildingUpgradeModal.nextLevel}</span>
+                        </div>
+                        {buildingUpgradeModal.cost !== null ? (
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px' }}>
+                                Cost:&nbsp;
+                                <span style={{ color: '#ffce00' }}>
+                                    {buildingUpgradeModal.costType === 'elixir' ? '⚗️' : '🪙'}&nbsp;{buildingUpgradeModal.cost}
+                                </span>
+                            </div>
+                        ) : (
+                            <div style={{ color: '#aaa', marginBottom: '20px', fontSize: '14px' }}>Max level reached or cost unavailable.</div>
+                        )}
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button className="coc-button" style={{ margin: 0, padding: '8px 18px' }} onClick={handleConfirmBuildingUpgrade}>
+                                ✅ Confirm
+                            </button>
+                            <button className="coc-button" style={{ margin: 0, padding: '8px 18px', background: 'linear-gradient(to bottom,#888,#555)', borderColor: '#333', textShadow: 'none', boxShadow: 'none' }} onClick={() => setBuildingUpgradeModal(null)}>
+                                ✖ Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
