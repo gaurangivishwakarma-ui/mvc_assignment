@@ -112,7 +112,6 @@ func GetBuildingUpgradeCost(ctx context.Context, queries *db.Queries, pgPlayerID
 	}, http.StatusOK, nil
 }
 
-
 func UpgradePlayerVillage(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUID) (map[string]interface{}, int, error) {
 	queries := db.New(pool)
 
