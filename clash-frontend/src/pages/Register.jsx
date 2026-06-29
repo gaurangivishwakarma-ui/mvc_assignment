@@ -1,9 +1,12 @@
+import SystemPopup from '../components/SystemPopup';
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerPlayer } from '../api/auth';
 
 export default function Register() {
     const [username, setUsername] = useState('');
+    const [systemPopupMsg, setSystemPopupMsg] = useState(null);
+    const showPopup = (msg) => setSystemPopupMsg(msg);
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +18,7 @@ export default function Register() {
         setIsLoading(true);
         try {
             await registerPlayer(username, password);
-            alert("Commander registered successfully! Please log in.");
+            showPopup("Commander registered successfully! Please log in.");
             navigate('/login');
         } catch (err) {
             setError(err);
@@ -91,6 +94,7 @@ export default function Register() {
 
     return (
         <div style={styles.container}>
+            <SystemPopup message={systemPopupMsg} onClose={() => setSystemPopupMsg(null)} />
             <div style={styles.card}>
                 <div style={styles.headerStrap}>NEW COMMANDER</div>
 

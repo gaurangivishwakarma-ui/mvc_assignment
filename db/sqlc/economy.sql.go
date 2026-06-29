@@ -100,7 +100,7 @@ SELECT
 FROM buildings_owned bo
 JOIN storage_buildings sb ON bo.building_id = sb.building_id
 WHERE bo.player_id = $1
-  AND bo.is_built = true
+  AND (bo.is_built = true OR NOW() >= bo.time_purchased + INTERVAL '5 seconds')
 GROUP BY sb.resource_type
 `
 
