@@ -64,6 +64,23 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
         setDeployments(prev => ({ ...prev, [selectedTroopKey]: prev[selectedTroopKey] - 1 }));
     };
 
+    const handleRemoveTroop = (troopToRemove) => {
+        if (battlePhase !== 'deploying') return;
+        setGridDeployedTroops(prev => prev.filter(t => t.id !== troopToRemove.id));
+        const key = `${troopToRemove.troop_type}_${troopToRemove.level}`;
+        setDeployments(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+    };
+
+    const handleClearAll = () => {
+        if (battlePhase !== 'deploying' || gridDeployedTroops.length === 0) return;
+        setGridDeployedTroops([]);
+        const resetDeployments = {};
+        army.forEach(t => {
+            resetDeployments[`${t.troop_type}_${t.current_level}`] = t.quantity;
+        });
+        setDeployments(resetDeployments);
+    };
+
     const handleAttack = async () => {
         if (!gridDeployedTroops.length) { showPopup('Deploy at least 1 troop!'); return; }
 
@@ -232,7 +249,7 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                         textShadow: '0 0 12px #ffce00, 2px 2px 0 #4d0000',
                         letterSpacing: '4px'
                     }}>
-                        ⚔️ &nbsp; {battlePhase === 'simulating' ? 'BATTLE IN PROGRESS' : 'TAP TO DEPLOY'} &nbsp; ⚔️
+                        ⚔️ &nbsp; {battlePhase === 'simulating' ? 'BATTLE IN PROGRESS' : 'TAP FIELD TO DEPLOY | TAP TROOP TO RECALL'} &nbsp; ⚔️
                     </span>
                 </div>
             )}
@@ -285,22 +302,54 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                     {gridDeployedTroops.map((t) => {
                         const src = TROOP_ASSETS[t.troop_type] || BUILDING_ASSETS.DEFAULT;
                         const isMarching = battlePhase === 'simulating';
+                        const isDeploying = battlePhase === 'deploying';
                         return (
-                            <img key={t.id} src={src} alt={t.troop_type}
+                            <div key={t.id}
+                                onClick={(e) => {
+                                    if (isDeploying) {
+                                        e.stopPropagation();
+                                        handleRemoveTroop(t);
+                                    }
+                                }}
+                                title={isDeploying ? "Click to remove deployed troop" : ""}
                                 style={{
                                     position: 'absolute',
                                     top: isMarching ? `${t.targetYPct || 50}%` : `${t.yPct}%`,
                                     left: isMarching ? `${t.targetXPct || 50}%` : `${t.xPct}%`,
                                     transform: 'translate(-50%, -50%)',
-                                    width: '38px', height: '38px',
-                                    objectFit: 'contain',
+                                    width: '42px', height: '42px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     zIndex: 700,
-                                    pointerEvents: 'none',
-                                    filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.9))',
+                                    pointerEvents: isDeploying ? 'auto' : 'none',
+                                    cursor: isDeploying ? 'pointer' : 'default',
                                     transition: isMarching ? 'top 1.8s ease-in, left 1.8s ease-in, opacity 1.8s ease-in, width 1.8s, height 1.8s' : 'none',
                                     opacity: isMarching ? 0 : 1
                                 }}
-                            />
+                            >
+                                <img src={src} alt={t.troop_type}
+                                    style={{
+                                        width: '38px', height: '38px',
+                                        objectFit: 'contain',
+                                        pointerEvents: 'none',
+                                        filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.9))'
+                                    }}
+                                />
+                                {isDeploying && (
+                                    <span style={{
+                                        position: 'absolute',
+                                        top: '-2px', right: '-2px',
+                                        background: '#ff3333',
+                                        color: '#fff',
+                                        borderRadius: '50%',
+                                        width: '15px', height: '15px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '11px', fontWeight: 'bold',
+                                        border: '1px solid #fff',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                                        pointerEvents: 'none'
+                                    }}>×</span>
+                                )}
+                            </div>
                         );
                     })}
                 </div>
@@ -350,22 +399,40 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                             );
                         })}
                     </div>
-                    <button
-                        onClick={handleAttack}
-                        disabled={battlePhase !== 'deploying' || gridDeployedTroops.length === 0}
-                        style={{
-                            padding: '14px 26px', fontSize: '20px', fontWeight: '900',
-                            background: 'linear-gradient(to bottom, #ff5e5e, #cc0000)',
-                            border: '3px solid #660000', borderRadius: '8px', color: '#fff',
-                            cursor: battlePhase !== 'deploying' ? 'not-allowed' : 'pointer',
-                            boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.4), 0 6px 0 #4d0000',
-                            textShadow: '2px 2px 0 #4d0000',
-                            opacity: battlePhase !== 'deploying' ? 0.55 : 1,
-                            flexShrink: 0
-                        }}
-                    >
-                        {battlePhase === 'simulating' ? '⚔️ ATTACKING...' : '🗡️ ATTACK!'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        {battlePhase === 'deploying' && gridDeployedTroops.length > 0 && (
+                            <button
+                                onClick={handleClearAll}
+                                style={{
+                                    padding: '14px 18px', fontSize: '16px', fontWeight: '800',
+                                    background: 'linear-gradient(to bottom, #777, #444)',
+                                    border: '2px solid #222', borderRadius: '8px', color: '#fff',
+                                    cursor: 'pointer',
+                                    boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 0 #111',
+                                    textShadow: '1px 1px 0 #000',
+                                    flexShrink: 0
+                                }}
+                            >
+                                ↩ RECALL ALL
+                            </button>
+                        )}
+                        <button
+                            onClick={handleAttack}
+                            disabled={battlePhase !== 'deploying' || gridDeployedTroops.length === 0}
+                            style={{
+                                padding: '14px 26px', fontSize: '20px', fontWeight: '900',
+                                background: 'linear-gradient(to bottom, #ff5e5e, #cc0000)',
+                                border: '3px solid #660000', borderRadius: '8px', color: '#fff',
+                                cursor: battlePhase !== 'deploying' ? 'not-allowed' : 'pointer',
+                                boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.4), 0 6px 0 #4d0000',
+                                textShadow: '2px 2px 0 #4d0000',
+                                opacity: battlePhase !== 'deploying' ? 0.55 : 1,
+                                flexShrink: 0
+                            }}
+                        >
+                            {battlePhase === 'simulating' ? '⚔️ ATTACKING...' : '🗡️ ATTACK!'}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -398,6 +465,11 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 'bold' }}>
                                 <span>Elixir:</span><span>⚗️ {battleResult.loot_stolen?.elixir || 0}</span>
                             </div>
+                            {battleResult.storage_capped && (
+                                <div style={{ color: '#ff5e5e', fontSize: '13px', textAlign: 'center', marginTop: '10px', fontWeight: 'bold' }}>
+                                    ⚠️ Storage full! Some loot could not be collected. Upgrade storages!
+                                </div>
+                            )}
                         </div>
                         <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px' }}>
                             XP: <span style={{ color: battleResult.victory ? '#aee536' : '#ff5e5e' }}>

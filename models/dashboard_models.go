@@ -11,9 +11,10 @@ type BuildingInventory struct {
 }
 
 type DashboardResponse struct {
-	Username     string              `json:"username"`
-	VillageLevel int32               `json:"village_level"`
-	XPPoints     int32               `json:"xp_points"`
-	Balances     map[string]int32    `json:"balances"`
-	Buildings    []BuildingInventory `json:"buildings_placed"`
+	Username          string              `json:"username"`
+	VillageLevel      int32               `json:"village_level"`
+	XPPoints          int32               `json:"xp_points"`
+	Balances          map[string]int32    `json:"balances"`
+	StorageCapacities map[string]int32    `json:"storage_capacities"`
+	Buildings         []BuildingInventory `json:"buildings_placed"`
 }

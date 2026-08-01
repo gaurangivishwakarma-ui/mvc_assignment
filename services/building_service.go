@@ -14,6 +14,7 @@ import (
 
 func MoveBuilding(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUID, req models.MoveBuildingRequest) (map[string]interface{}, int, error) {
 	queries := db.New(pool)
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 
 	parsedBuildingUUID, err := uuid.Parse(req.OwnedBuildingID)
 	if err != nil {
@@ -28,6 +29,10 @@ func MoveBuilding(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUI
 
 	if info.PlayerID != pgPlayerID {
 		return nil, http.StatusForbidden, fmt.Errorf("Unauthorized: You do not own this structure")
+	}
+
+	if !info.IsBuilt.Bool {
+		return nil, http.StatusBadRequest, fmt.Errorf("Cannot move building: 5 seconds must pass for creating or upgrading it")
 	}
 
 	const maxMapGrid int32 = 40

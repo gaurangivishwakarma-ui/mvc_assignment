@@ -14,6 +14,7 @@ import (
 )
 
 func UpgradeBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID, req models.UpgradeRequest) (map[string]interface{}, int, error) {
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 	parsedPlacementUUID, err := uuid.Parse(req.PlacementID)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid placement ID format")
@@ -27,6 +28,10 @@ func UpgradeBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype
 	ownedBuilding, err := queries.GetOwnedBuildingDetails(ctx, ownedArgs)
 	if err != nil {
 		return nil, http.StatusNotFound, fmt.Errorf("Building not found or you don't own it")
+	}
+
+	if !ownedBuilding.IsBuilt.Bool {
+		return nil, http.StatusBadRequest, fmt.Errorf("Cannot upgrade building: 5 seconds must pass for creating or upgrading it")
 	}
 
 	nextLevelArgs := db.GetNextLevelBuildingParams{
@@ -76,6 +81,7 @@ func UpgradeBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype
 }
 
 func GetBuildingUpgradeCost(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID, placementID string) (map[string]interface{}, int, error) {
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 	parsedPlacementUUID, err := uuid.Parse(placementID)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid placement ID format")
@@ -89,6 +95,10 @@ func GetBuildingUpgradeCost(ctx context.Context, queries *db.Queries, pgPlayerID
 	ownedBuilding, err := queries.GetOwnedBuildingDetails(ctx, ownedArgs)
 	if err != nil {
 		return nil, http.StatusNotFound, fmt.Errorf("Building not found or you don't own it")
+	}
+
+	if !ownedBuilding.IsBuilt.Bool {
+		return nil, http.StatusBadRequest, fmt.Errorf("Building is currently under construction or upgrade")
 	}
 
 	nextLevelArgs := db.GetNextLevelBuildingParams{

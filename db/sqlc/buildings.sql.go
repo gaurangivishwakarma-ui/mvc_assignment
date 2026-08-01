@@ -12,7 +12,7 @@ import (
 )
 
 const getOwnedBuildingPositionInfo = `-- name: GetOwnedBuildingPositionInfo :one
-SELECT bo.player_id, b.width, b.breadth
+SELECT bo.player_id, bo.is_built, b.width, b.breadth
 FROM buildings_owned bo
 JOIN buildings b ON bo.building_id = b.id
 WHERE bo.id = $1
@@ -20,6 +20,7 @@ WHERE bo.id = $1
 
 type GetOwnedBuildingPositionInfoRow struct {
 	PlayerID pgtype.UUID `json:"player_id"`
+	IsBuilt  pgtype.Bool `json:"is_built"`
 	Width    int32       `json:"width"`
 	Breadth  int32       `json:"breadth"`
 }
@@ -27,7 +28,12 @@ type GetOwnedBuildingPositionInfoRow struct {
 func (q *Queries) GetOwnedBuildingPositionInfo(ctx context.Context, id pgtype.UUID) (GetOwnedBuildingPositionInfoRow, error) {
 	row := q.db.QueryRow(ctx, getOwnedBuildingPositionInfo, id)
 	var i GetOwnedBuildingPositionInfoRow
-	err := row.Scan(&i.PlayerID, &i.Width, &i.Breadth)
+	err := row.Scan(
+		&i.PlayerID,
+		&i.IsBuilt,
+		&i.Width,
+		&i.Breadth,
+	)
 	return i, err
 }
 

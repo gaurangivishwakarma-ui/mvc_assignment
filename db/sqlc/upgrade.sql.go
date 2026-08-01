@@ -13,7 +13,7 @@ import (
 
 const commitBuildingUpgrade = `-- name: CommitBuildingUpgrade :exec
 UPDATE buildings_owned
-SET building_id = $1, current_level = $2
+SET building_id = $1, current_level = $2, is_built = false, time_purchased = NOW()
 WHERE id = $3
 `
 
@@ -69,6 +69,7 @@ const getOwnedBuildingDetails = `-- name: GetOwnedBuildingDetails :one
 SELECT 
     bo.id AS placement_id, 
     bo.current_level, 
+    bo.is_built,
     b.building_type 
 FROM buildings_owned bo
 JOIN buildings b ON bo.building_id = b.id
@@ -83,13 +84,19 @@ type GetOwnedBuildingDetailsParams struct {
 type GetOwnedBuildingDetailsRow struct {
 	PlacementID  pgtype.UUID `json:"placement_id"`
 	CurrentLevel int32       `json:"current_level"`
+	IsBuilt      pgtype.Bool `json:"is_built"`
 	BuildingType string      `json:"building_type"`
 }
 
 func (q *Queries) GetOwnedBuildingDetails(ctx context.Context, arg GetOwnedBuildingDetailsParams) (GetOwnedBuildingDetailsRow, error) {
 	row := q.db.QueryRow(ctx, getOwnedBuildingDetails, arg.ID, arg.PlayerID)
 	var i GetOwnedBuildingDetailsRow
-	err := row.Scan(&i.PlacementID, &i.CurrentLevel, &i.BuildingType)
+	err := row.Scan(
+		&i.PlacementID,
+		&i.CurrentLevel,
+		&i.IsBuilt,
+		&i.BuildingType,
+	)
 	return i, err
 }
 

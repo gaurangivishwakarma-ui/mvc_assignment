@@ -10,6 +10,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func GetPlayerStorageCapacities(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID) (int32, int32, error) {
+	storages, err := queries.GetTotalStorageCapacity(ctx, pgPlayerID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var goldCap int32 = 1000
+	var elixirCap int32 = 1000
+
+	for _, s := range storages {
+		if s.ResourceType == db.ResourceTypeGold {
+			goldCap += s.TotalCapacity
+		} else if s.ResourceType == db.ResourceTypeElixir {
+			elixirCap += s.TotalCapacity
+		}
+	}
+	return goldCap, elixirCap, nil
+}
+
 func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID) (map[string]interface{}, int, error) {
 	buildings, err := queries.GetResourceBuildingsForCollection(ctx, pgPlayerID)
 	if err != nil {
@@ -45,20 +64,9 @@ func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch player profile")
 	}
 
-	storages, err := queries.GetTotalStorageCapacity(ctx, pgPlayerID)
+	goldCap, elixirCap, err := GetPlayerStorageCapacities(ctx, queries, pgPlayerID)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to fetch storage capacity")
-	}
-
-	var goldCap int32 = 1000
-	var elixirCap int32 = 1000
-
-	for _, s := range storages {
-		if s.ResourceType == db.ResourceTypeGold {
-			goldCap += s.TotalCapacity
-		} else if s.ResourceType == db.ResourceTypeElixir {
-			elixirCap += s.TotalCapacity
-		}
 	}
 
 	goldSpace := goldCap - profile.GoldCoins

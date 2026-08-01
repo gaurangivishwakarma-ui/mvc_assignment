@@ -96,6 +96,33 @@ func AttackOpponent(ctx context.Context, pool *pgxpool.Pool, pgAttackerID pgtype
 	stolenGold := (defender.GoldCoins * lootPercentage) / 100
 	stolenElixir := (defender.Elixir * lootPercentage) / 100
 
+	attacker, err := queries.GetPlayerProfile(ctx, pgAttackerID)
+	if err != nil {
+		return nil, http.StatusNotFound, fmt.Errorf("Attacker profile not found")
+	}
+	goldCap, elixirCap, err := GetPlayerStorageCapacities(ctx, queries, pgAttackerID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to check storage capacity")
+	}
+	goldSpace := goldCap - attacker.GoldCoins
+	if goldSpace < 0 {
+		goldSpace = 0
+	}
+	elixirSpace := elixirCap - attacker.Elixir
+	if elixirSpace < 0 {
+		elixirSpace = 0
+	}
+
+	storageCapped := false
+	if stolenGold > goldSpace {
+		stolenGold = goldSpace
+		storageCapped = true
+	}
+	if stolenElixir > elixirSpace {
+		stolenElixir = elixirSpace
+		storageCapped = true
+	}
+
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("Database transaction failed to initialize")
@@ -199,6 +226,7 @@ func AttackOpponent(ctx context.Context, pool *pgxpool.Pool, pgAttackerID pgtype
 		"victory":             isAttackerWinner,
 		"destruction_percent": destructionPercent,
 		"xp_modifier":         xpChange,
+		"storage_capped":      storageCapped,
 		"loot_stolen": map[string]int32{
 			"gold_coins": stolenGold,
 			"elixir":     stolenElixir,

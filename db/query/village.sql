@@ -58,3 +58,11 @@ WHERE id = $1
   AND player_id = $2
   AND is_built = false
   AND NOW() >= time_purchased + INTERVAL '5 seconds';
+
+-- name: AutoCompleteBuildings :exec
+UPDATE buildings_owned
+SET is_built = true,
+    last_collected_at = NOW()
+WHERE player_id = $1
+  AND is_built = false
+  AND NOW() >= time_purchased + INTERVAL '5 seconds';
