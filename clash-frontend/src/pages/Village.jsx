@@ -326,7 +326,15 @@ export default function Village() {
                         if (next[id] === 0) {
                             completeBuildingUpgrade({ placement_id: id }).then(() => {
                                 getVillageProfile().then(setPlayer);
-                            }).catch(err => showPopup(`Completion failed: ${err}`));
+                            }).catch(err => {
+                                setTimeout(() => {
+                                    completeBuildingUpgrade({ placement_id: id }).then(() => {
+                                        getVillageProfile().then(setPlayer);
+                                    }).catch(() => {
+                                        getVillageProfile().then(setPlayer);
+                                    });
+                                }, 1500);
+                            });
                         }
                     }
                 }
@@ -624,11 +632,21 @@ export default function Village() {
                 </div>
 
                 <div style={styles.resources}>
-                    <div style={styles.resourceBox}>
-                        🪙 {player.balances?.gold || 0}
+                    <div style={{ ...styles.resourceBox, flexDirection: 'column', alignItems: 'flex-end', gap: '2px', minWidth: '170px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', color: '#ffce00' }}>
+                            🪙 {player.balances?.gold || 0} / {player.storage_capacities?.gold_cap || 1000}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#ccc', fontWeight: 'bold' }}>
+                            Remaining: {Math.max(0, (player.storage_capacities?.gold_cap || 1000) - (player.balances?.gold || 0))}
+                        </div>
                     </div>
-                    <div style={styles.resourceBox}>
-                        ⚗️ {player.balances?.elixir || 0}
+                    <div style={{ ...styles.resourceBox, flexDirection: 'column', alignItems: 'flex-end', gap: '2px', minWidth: '170px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', color: '#ff77e1' }}>
+                            ⚗️ {player.balances?.elixir || 0} / {player.storage_capacities?.elixir_cap || 1000}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#ccc', fontWeight: 'bold' }}>
+                            Remaining: {Math.max(0, (player.storage_capacities?.elixir_cap || 1000) - (player.balances?.elixir || 0))}
+                        </div>
                     </div>
                     <button className="coc-button" style={styles.actionButton} onClick={handleLogout}>
                         LOGOUT
@@ -797,6 +815,10 @@ export default function Village() {
                                             className="coc-button"
                                             style={{ width: 'auto', padding: '5px 10px', fontSize: '12px', margin: 0 }}
                                             onClick={() => {
+                                                if (upgradingTimers[b.placement_id] > 0) {
+                                                    showPopup("Cannot move building: 5 seconds must pass for creating or upgrading it!");
+                                                    return;
+                                                }
                                                 setSelectedBuildingToMove(b);
                                                 setIsMoveModalOpen(false);
                                             }}
@@ -1013,9 +1035,27 @@ export default function Village() {
 
                         <div style={{ background: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '8px', minHeight: '150px' }}>
                             {activeDashboardTab === 'resources' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '18px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Gold:</span> <span style={{ fontWeight: 'bold', color: '#ffce00' }}>🪙 {player.balances?.gold || 0}</span></div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Elixir:</span> <span style={{ fontWeight: 'bold', color: '#ffce00' }}>⚗️ {player.balances?.elixir || 0}</span></div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '15px' }}>
+                                    <div style={{ background: 'rgba(255,206,0,0.1)', border: '1px solid rgba(255,206,0,0.4)', padding: '10px', borderRadius: '6px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                            <span style={{ fontWeight: 'bold' }}>Gold Storage:</span> 
+                                            <span style={{ fontWeight: 'bold', color: '#ffce00' }}>🪙 {player.balances?.gold || 0} / {player.storage_capacities?.gold_cap || 1000}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#ddd' }}>
+                                            <span>Remaining Space:</span>
+                                            <span>{Math.max(0, (player.storage_capacities?.gold_cap || 1000) - (player.balances?.gold || 0))}</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ background: 'rgba(255,119,225,0.1)', border: '1px solid rgba(255,119,225,0.4)', padding: '10px', borderRadius: '6px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                            <span style={{ fontWeight: 'bold' }}>Elixir Storage:</span> 
+                                            <span style={{ fontWeight: 'bold', color: '#ff77e1' }}>⚗️ {player.balances?.elixir || 0} / {player.storage_capacities?.elixir_cap || 1000}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#ddd' }}>
+                                            <span>Remaining Space:</span>
+                                            <span>{Math.max(0, (player.storage_capacities?.elixir_cap || 1000) - (player.balances?.elixir || 0))}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             {activeDashboardTab === 'buildings' && (
@@ -1063,6 +1103,11 @@ export default function Village() {
                                 className="coc-button" 
                                 style={styles.actionButton} 
                                 onClick={() => {
+                                    if (clickedBuildingOnMap.building_type !== 'town_hall' && upgradingTimers[clickedBuildingOnMap.placement_id] > 0) {
+                                        showPopup("Cannot upgrade building: 5 seconds must pass for creating or upgrading it!");
+                                        setClickedBuildingOnMap(null);
+                                        return;
+                                    }
                                     setClickedBuildingOnMap(null);
                                     if (clickedBuildingOnMap.building_type === 'town_hall') {
                                         handleUpgradeVillageClick();
@@ -1078,6 +1123,11 @@ export default function Village() {
                                     className="coc-button" 
                                     style={{...styles.actionButton, background: 'linear-gradient(to bottom, #f29f05, #d96d00)', borderColor: '#a64a00', boxShadow: 'inset 0px 2px 0px rgba(255,255,255,0.4), 0px 6px 0px #733000', textShadow: '2px 2px 0px #733000'}} 
                                     onClick={() => {
+                                        if (upgradingTimers[clickedBuildingOnMap.placement_id] > 0) {
+                                            showPopup("Cannot move building: 5 seconds must pass for creating or upgrading it!");
+                                            setClickedBuildingOnMap(null);
+                                            return;
+                                        }
                                         setSelectedBuildingToMove(clickedBuildingOnMap);
                                         setClickedBuildingOnMap(null);
                                     }}

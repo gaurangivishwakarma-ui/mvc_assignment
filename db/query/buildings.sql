@@ -1,5 +1,5 @@
 -- name: GetOwnedBuildingPositionInfo :one
-SELECT bo.player_id, b.width, b.breadth
+SELECT bo.player_id, bo.is_built, b.width, b.breadth
 FROM buildings_owned bo
 JOIN buildings b ON bo.building_id = b.id
 WHERE bo.id = $1;

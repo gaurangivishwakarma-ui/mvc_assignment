@@ -267,3 +267,17 @@ func (q *Queries) PlaceBuilding(ctx context.Context, arg PlaceBuildingParams) (B
 	)
 	return i, err
 }
+
+const autoCompleteBuildings = `-- name: AutoCompleteBuildings :exec
+UPDATE buildings_owned
+SET is_built = true,
+    last_collected_at = NOW()
+WHERE player_id = $1
+  AND is_built = false
+  AND NOW() >= time_purchased + INTERVAL '5 seconds'
+`
+
+func (q *Queries) AutoCompleteBuildings(ctx context.Context, playerID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, autoCompleteBuildings, playerID)
+	return err
+}

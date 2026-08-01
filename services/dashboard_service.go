@@ -12,12 +12,14 @@ import (
 )
 
 func GetDashboard(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID) (models.DashboardResponse, int, error) {
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 	rows, err := queries.GetDashboardData(ctx, pgPlayerID)
 	if err != nil || len(rows) == 0 {
 		return models.DashboardResponse{}, http.StatusInternalServerError, fmt.Errorf("Profile data unreachable")
 	}
 
 	firstRow := rows[0]
+	goldCap, elixirCap, _ := GetPlayerStorageCapacities(ctx, queries, pgPlayerID)
 	response := models.DashboardResponse{
 		Username:     firstRow.Username,
 		VillageLevel: firstRow.VillageLevel,
@@ -25,6 +27,10 @@ func GetDashboard(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UU
 		Balances: map[string]int32{
 			"gold":   firstRow.GoldCoins,
 			"elixir": firstRow.Elixir,
+		},
+		StorageCapacities: map[string]int32{
+			"gold_cap":   goldCap,
+			"elixir_cap": elixirCap,
 		},
 		Buildings: []models.BuildingInventory{},
 	}

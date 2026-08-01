@@ -2,6 +2,7 @@
 SELECT 
     bo.id AS placement_id, 
     bo.current_level, 
+    bo.is_built,
     b.building_type 
 FROM buildings_owned bo
 JOIN buildings b ON bo.building_id = b.id
@@ -25,7 +26,7 @@ WHERE id = $3;
 
 -- name: CommitBuildingUpgrade :exec
 UPDATE buildings_owned
-SET building_id = $1, current_level = $2
+SET building_id = $1, current_level = $2, is_built = false, time_purchased = NOW()
 WHERE id = $3;
 
 -- name: UpgradeVillageLevel :exec
