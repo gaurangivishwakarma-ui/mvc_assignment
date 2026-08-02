@@ -13,14 +13,14 @@ import (
 )
 
 func MoveBuilding(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUID, req models.MoveBuildingRequest) (map[string]interface{}, int, error) {
-	queries := db.New(pool)
-	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
-
 	parsedBuildingUUID, err := uuid.Parse(req.OwnedBuildingID)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid building ID format")
 	}
 	pgBuildingID := pgtype.UUID{Bytes: parsedBuildingUUID, Valid: true}
+
+	queries := db.New(pool)
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 
 	info, err := queries.GetOwnedBuildingPositionInfo(ctx, pgBuildingID)
 	if err != nil {

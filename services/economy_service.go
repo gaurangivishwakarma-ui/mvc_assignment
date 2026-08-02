@@ -124,3 +124,16 @@ func CollectResources(ctx context.Context, queries *db.Queries, pgPlayerID pgtyp
 		},
 	}, http.StatusOK, nil
 }
+
+// CalculateResourceGeneration computes production output over elapsed hours and caps it to remaining storage space.
+func CalculateResourceGeneration(hoursPassed float64, hourlyRate float64, currentBalance int32, storageCap int32) int32 {
+	generated := int32(hoursPassed * hourlyRate)
+	space := storageCap - currentBalance
+	if space < 0 {
+		space = 0
+	}
+	if generated > space {
+		return space
+	}
+	return generated
+}

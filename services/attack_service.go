@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"strings"
 
 	db "github.com/gaurangi/mvc_assignment/db/sqlc"
 	"github.com/gaurangi/mvc_assignment/models"
@@ -51,6 +52,30 @@ func AttackOpponent(ctx context.Context, pool *pgxpool.Pool, pgAttackerID pgtype
 	if err != nil {
 		log.Printf("Database Error calculating defense power: %v\n", err)
 		return nil, http.StatusInternalServerError, fmt.Errorf("Failed to compute defender structure layout")
+	}
+
+	var giantPower int32 = 0
+	var goblinPower int32 = 0
+	for _, t := range req.DeployedTroops {
+		tt := strings.ToLower(t.TroopType)
+		if tt == "giant" {
+			giantPower += t.Quantity * t.Level
+		} else if tt == "goblin" {
+			goblinPower += t.Quantity * t.Level
+		}
+	}
+
+	if giantPower > 0 && defensePower > 0 {
+		reduction := int32(giantPower * 200)
+		if reduction >= defensePower {
+			defensePower = 1
+		} else {
+			defensePower -= reduction
+		}
+	}
+
+	if goblinPower > 0 {
+		attackerPower += goblinPower * 85
 	}
 
 	var destructionPercent int32 = 100
@@ -232,4 +257,42 @@ func AttackOpponent(ctx context.Context, pool *pgxpool.Pool, pgAttackerID pgtype
 			"elixir":     stolenElixir,
 		},
 	}, http.StatusOK, nil
+}
+func CalculateCombatPower(attackerPower int32, defensePower int32, deployedTroops []models.DeployedTroop) (int32, int32) {
+	var giantPower int32 = 0
+	var goblinPower int32 = 0
+	for _, t := range deployedTroops {
+		tt := strings.ToLower(t.TroopType)
+		if tt == "giant" {
+			giantPower += t.Quantity * t.Level
+		} else if tt == "goblin" {
+			goblinPower += t.Quantity * t.Level
+		}
+	}
+
+	if giantPower > 0 && defensePower > 0 {
+		reduction := int32(giantPower * 200)
+		if reduction >= defensePower {
+			defensePower = 1
+		} else {
+			defensePower -= reduction
+		}
+	}
+
+	if goblinPower > 0 {
+		attackerPower += goblinPower * 85
+	}
+
+	return attackerPower, defensePower
+}
+
+func CalculateCappedLoot(stolenAmount int32, storageCap int32, currentBalance int32) (int32, bool) {
+	space := storageCap - currentBalance
+	if space < 0 {
+		space = 0
+	}
+	if stolenAmount > space {
+		return space, true
+	}
+	return stolenAmount, false
 }

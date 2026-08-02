@@ -9,6 +9,17 @@ const ANIM_MARCH_MS = 1800;
 const ANIM_EXPLODE_MS = 1500;
 const TOTAL_ANIM_MS = ANIM_MARCH_MS + ANIM_EXPLODE_MS;
 
+const getBuildingMaxHP = (type = '', lvl = 1) => {
+    const t = (type || '').toLowerCase();
+    const l = Number(lvl) || 1;
+    if (t === 'town_hall') return 1500 + (l * 500);
+    if (t.includes('storage') || t.includes('vault')) return 800 + (l * 250);
+    if (t === 'cannon' || t === 'archer_tower' || t === 'mortar' || t.includes('defense')) return 500 + (l * 180);
+    if (t.includes('mine') || t.includes('collector') || t.includes('pump') || t.includes('drill')) return 550 + (l * 150);
+    if (t.includes('camp') || t.includes('barracks')) return 400 + (l * 120);
+    return 500 + (l * 150);
+};
+
 export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHOP_ASSETS, TROOP_ASSETS }) {
     const [army, setArmy] = useState([]);
     const [systemPopupMsg, setSystemPopupMsg] = useState(null);
@@ -19,9 +30,22 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
 
 
     const [buildingStates, setBuildingStates] = useState({});
+    const [buildingHP, setBuildingHP] = useState({});
 
     const [battlePhase, setBattlePhase] = useState('deploying');
     const [battleResult, setBattleResult] = useState(null);
+
+    useEffect(() => {
+        if (!matchData) return;
+        const townHall = { building_type: 'town_hall', current_level: matchData.village_level || 1 };
+        const layout = [townHall, ...(matchData.village_layout || [])];
+        const initHP = {};
+        layout.forEach((b, idx) => {
+            const max = getBuildingMaxHP(b.building_type, b.current_level);
+            initHP[idx] = { current: max, max: max };
+        });
+        setBuildingHP(initHP);
+    }, [matchData]);
 
     useEffect(() => {
         getArmyStatus()
@@ -107,13 +131,68 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
             const totalBuildings = layout.length;
             const numDestroyed = Math.floor(totalBuildings * result.destruction_percent / 100);
 
-            let indices = Array.from({ length: totalBuildings - 1 }, (_, i) => i + 1);
-            indices.sort(() => Math.random() - 0.5);
-            const destroyedIndices = indices.slice(0, numDestroyed);
+            // Classify structures for specialized troop AI targeting (Giant -> Defenses, Goblin -> Resources)
+            const isDefensiveBuilding = (b) => {
+                if (!b || !b.building_type) return false;
+                const typeStr = b.building_type.toLowerCase();
+                return typeStr === 'cannon' || typeStr === 'archer_tower' || typeStr === 'mortar' || typeStr.includes('defense') || typeStr.includes('tower');
+            };
+            const isResourceBuilding = (b) => {
+                if (!b || !b.building_type) return false;
+                const typeStr = b.building_type.toLowerCase();
+                return typeStr.includes('mine') || typeStr.includes('collector') || typeStr.includes('storage') || typeStr.includes('pump');
+            };
+
+            const allDefensiveIndices = [];
+            const allResourceIndices = [];
+            const allOtherIndices = [];
+            layout.forEach((b, idx) => {
+                if (idx === 0) return; // Town Hall handled separately
+                if (isDefensiveBuilding(b)) allDefensiveIndices.push(idx);
+                else if (isResourceBuilding(b)) allResourceIndices.push(idx);
+                else allOtherIndices.push(idx);
+            });
+
+            allDefensiveIndices.sort(() => Math.random() - 0.5);
+            allResourceIndices.sort(() => Math.random() - 0.5);
+            allOtherIndices.sort(() => Math.random() - 0.5);
+
+            // Prioritize structure destruction order based on specialized units deployed in battle
+            const hasGiant = gridDeployedTroops.some(t => (t.troop_type || '').toLowerCase() === 'giant');
+            const hasGoblin = gridDeployedTroops.some(t => (t.troop_type || '').toLowerCase() === 'goblin');
+            let orderedIndices = [];
+            if (hasGiant && hasGoblin) {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices];
+            } else if (hasGiant) {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices];
+            } else if (hasGoblin) {
+                orderedIndices = [...allResourceIndices, ...allDefensiveIndices, ...allOtherIndices];
+            } else {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices].sort(() => Math.random() - 0.5);
+            }
+
+            const destroyedIndices = orderedIndices.slice(0, numDestroyed);
 
             setGridDeployedTroops(prev => prev.map((t, i) => {
-                const targetIdx = destroyedIndices.length > 0 ? destroyedIndices[i % destroyedIndices.length] : 0;
-                const b = layout[targetIdx];
+                const tType = (t.troop_type || '').toLowerCase();
+                let targetIdx;
+                
+                // Giant AI: Strictly targets defensive structures (Cannons, Archer Towers, Mortars) as long as any remain on the field
+                if (tType === 'giant' && allDefensiveIndices.length > 0) {
+                    targetIdx = allDefensiveIndices[i % allDefensiveIndices.length];
+                }
+                // Goblin AI: Strictly targets resource structures (Gold Mines, Elixir Collectors, Storages) as long as any remain
+                else if (tType === 'goblin' && allResourceIndices.length > 0) {
+                    targetIdx = allResourceIndices[i % allResourceIndices.length];
+                }
+                // Barbarian, Archer, Wizard AI: Engage available structures across the base
+                else if (destroyedIndices.length > 0) {
+                    targetIdx = destroyedIndices[i % destroyedIndices.length];
+                } else {
+                    targetIdx = 0;
+                }
+                
+                const b = layout[targetIdx] || layout[0];
                 const targetXPct = ((b.x_coords + ((b.width || 2) / 2)) / 25) * 100;
                 const targetYPct = ((b.y_coords + ((b.breadth || b.height || 2) / 2)) / 25) * 100;
                 return { ...t, targetXPct, targetYPct };
@@ -124,9 +203,23 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                 const explosionDuration = 3500;
 
                 destroyedIndices.forEach((bIdx, i) => {
-                    const delay = numDestroyed > 0 ? (explosionDuration / numDestroyed) * i : 0;
+                    const delay = Math.max(500, numDestroyed > 0 ? (explosionDuration / numDestroyed) * i : 500);
+
+                    // Animate HP depletion as troops attack before explosion
+                    const steps = 4;
+                    const stepInterval = Math.floor(delay / steps);
+                    for (let s = 1; s <= steps; s++) {
+                        setTimeout(() => {
+                            setBuildingHP(prev => {
+                                const current = prev[bIdx] || { current: 1000, max: 1000 };
+                                const nextVal = Math.max(0, Math.floor(current.max * (1 - s / steps)));
+                                return { ...prev, [bIdx]: { ...current, current: nextVal } };
+                            });
+                        }, stepInterval * (s - 1));
+                    }
 
                     setTimeout(() => {
+                        setBuildingHP(prev => ({ ...prev, [bIdx]: { ...(prev[bIdx] || {}), current: 0 } }));
                         setBuildingStates(prev => ({ ...prev, [bIdx]: 'exploding' }));
 
                         setTimeout(() => {
@@ -134,6 +227,32 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                         }, 1000);
                     }, delay);
                 });
+
+                // Apply partial combat damage to surviving structures
+                const survivingIndices = orderedIndices.slice(numDestroyed);
+                survivingIndices.slice(0, 3).forEach((sIdx, i) => {
+                    setTimeout(() => {
+                        setBuildingHP(prev => {
+                            const current = prev[sIdx] || { current: 1000, max: 1000 };
+                            const remainingPct = 0.35 + (i * 0.15);
+                            return { ...prev, [sIdx]: { ...current, current: Math.floor(current.max * remainingPct) } };
+                        });
+                    }, 600 + (i * 500));
+                });
+
+                // Include Town Hall combat damage if destruction is significant
+                if (result.destruction_percent >= 50) {
+                    setTimeout(() => {
+                        setBuildingHP(prev => {
+                            const current = prev[0] || { current: 1500, max: 1500 };
+                            return { ...prev, 0: { ...current, current: result.destruction_percent >= 85 ? 0 : Math.floor(current.max * 0.35) } };
+                        });
+                        if (result.destruction_percent >= 85) {
+                            setBuildingStates(prev => ({ ...prev, 0: 'exploding' }));
+                            setTimeout(() => setBuildingStates(prev => ({ ...prev, 0: 'rubble' })), 1000);
+                        }
+                    }, 1200);
+                }
 
                 setTimeout(() => {
                     setBattlePhase('finished');
@@ -190,15 +309,63 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
 
             const isTownHallExploding = isHall && bState === 'exploding';
 
+            const hpData = buildingHP[i] || { current: getBuildingMaxHP(type, lvl), max: getBuildingMaxHP(type, lvl) };
+            const hpPercent = Math.max(0, Math.min(100, (hpData.current / hpData.max) * 100));
+            
+            let barColor = '#58e026';
+            if (hpPercent <= 25) barColor = '#ff3b30';
+            else if (hpPercent <= 50) barColor = '#ffae00';
+
+            const showHealthBar = battlePhase !== 'deploying' && bState !== 'rubble';
+
             tiles.push(
                 <div key={`b-${i}`} style={{
                     position: 'relative',
                     gridColumn: `${b.x_coords || 1} / span ${w}`,
                     gridRow: `${b.y_coords || 1} / span ${h}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 3,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    zIndex: bState === 'exploding' ? 20 : 5,
                     animation: isTownHallExploding ? 'shake 0.4s infinite' : 'none'
                 }}>
+                    {showHealthBar && (
+                        <div style={{
+                            position: 'absolute',
+                            top: isHall ? '-8px' : '-4px',
+                            width: isHall ? '85%' : '80%',
+                            height: '12px',
+                            background: 'rgba(0, 0, 0, 0.85)',
+                            border: '1.5px solid #222',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.8), 0 0 2px rgba(255,255,255,0.2)',
+                            zIndex: 25,
+                            pointerEvents: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                left: 0, top: 0, bottom: 0,
+                                width: `${hpPercent}%`,
+                                background: `linear-gradient(to bottom, ${barColor}, ${barColor}bb)`,
+                                transition: 'width 0.25s ease-out, background-color 0.25s ease',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5)'
+                            }} />
+                            <span style={{
+                                position: 'relative',
+                                fontSize: '9px',
+                                fontWeight: '900',
+                                color: '#fff',
+                                textShadow: '1px 1px 1px #000, -1px -1px 1px #000, 1px -1px 1px #000, -1px 1px 1px #000',
+                                zIndex: 26,
+                                letterSpacing: '0.3px',
+                                fontFamily: "'Montserrat', sans-serif"
+                            }}>
+                                {Math.round(hpData.current)} / {hpData.max}
+                            </span>
+                        </div>
+                    )}
                     <img
                         src={src}
                         alt={type}

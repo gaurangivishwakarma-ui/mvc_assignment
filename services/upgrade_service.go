@@ -14,12 +14,12 @@ import (
 )
 
 func UpgradeBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID, req models.UpgradeRequest) (map[string]interface{}, int, error) {
-	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 	parsedPlacementUUID, err := uuid.Parse(req.PlacementID)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid placement ID format")
 	}
 	pgPlacementID := pgtype.UUID{Bytes: parsedPlacementUUID, Valid: true}
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 
 	ownedArgs := db.GetOwnedBuildingDetailsParams{
 		ID:       pgPlacementID,
@@ -81,12 +81,12 @@ func UpgradeBuilding(ctx context.Context, queries *db.Queries, pgPlayerID pgtype
 }
 
 func GetBuildingUpgradeCost(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.UUID, placementID string) (map[string]interface{}, int, error) {
-	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 	parsedPlacementUUID, err := uuid.Parse(placementID)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Errorf("Invalid placement ID format")
 	}
 	pgPlacementID := pgtype.UUID{Bytes: parsedPlacementUUID, Valid: true}
+	_ = queries.AutoCompleteBuildings(ctx, pgPlayerID)
 
 	ownedArgs := db.GetOwnedBuildingDetailsParams{
 		ID:       pgPlacementID,
@@ -190,4 +190,26 @@ func GetVillageUpgradeCost(ctx context.Context, pool *pgxpool.Pool, pgPlayerID p
 		"cost":         goldCost,
 		"next_level":   player.VillageLevel + 1,
 	}, http.StatusOK, nil
+}
+
+// CalculateVillageUpgradeCost checks maximum level restrictions and computes the gold cost for upgrading the Town Hall.
+func CalculateVillageUpgradeCost(currentLevel int32) (isMax bool, nextLevel int32, goldCost int32) {
+	if currentLevel >= 4 {
+		return true, currentLevel, 0
+	}
+	return false, currentLevel + 1, currentLevel * 10000
+}
+
+// ValidateUpgradeEligibility checks whether a player satisfies level and resource requirements for building progression.
+func ValidateUpgradeEligibility(villageLevel int32, requiredLevel int32, playerGold int32, playerElixir int32, costType string, buildCost int32) (bool, string) {
+	if villageLevel < requiredLevel {
+		return false, "Your Village Level is too low to upgrade this building"
+	}
+	if strings.ToLower(costType) == "gold" && playerGold < buildCost {
+		return false, "Insufficient resources to upgrade"
+	}
+	if strings.ToLower(costType) == "elixir" && playerElixir < buildCost {
+		return false, "Insufficient resources to upgrade"
+	}
+	return true, "OK"
 }
