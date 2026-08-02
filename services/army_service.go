@@ -122,3 +122,19 @@ func GetArmyStatus(ctx context.Context, queries *db.Queries, pgPlayerID pgtype.U
 		"army": army,
 	}, http.StatusOK, nil
 }
+
+// ValidateTroopTraining checks whether an army camp has adequate remaining housing space for a new troop batch.
+func ValidateTroopTraining(currentUsedSpace int32, maxCampCapacity int32, housingPerTroop int32, quantity int32) (bool, int32) {
+	requiredSpace := housingPerTroop * quantity
+	availableSpace := maxCampCapacity - currentUsedSpace
+	if availableSpace < 0 {
+		availableSpace = 0
+	}
+	if requiredSpace > availableSpace {
+		if housingPerTroop <= 0 {
+			return false, 0
+		}
+		return false, availableSpace / housingPerTroop
+	}
+	return true, quantity
+}

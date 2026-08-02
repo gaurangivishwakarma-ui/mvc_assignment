@@ -131,13 +131,68 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
             const totalBuildings = layout.length;
             const numDestroyed = Math.floor(totalBuildings * result.destruction_percent / 100);
 
-            let indices = Array.from({ length: totalBuildings - 1 }, (_, i) => i + 1);
-            indices.sort(() => Math.random() - 0.5);
-            const destroyedIndices = indices.slice(0, numDestroyed);
+            // Classify structures for specialized troop AI targeting (Giant -> Defenses, Goblin -> Resources)
+            const isDefensiveBuilding = (b) => {
+                if (!b || !b.building_type) return false;
+                const typeStr = b.building_type.toLowerCase();
+                return typeStr === 'cannon' || typeStr === 'archer_tower' || typeStr === 'mortar' || typeStr.includes('defense') || typeStr.includes('tower');
+            };
+            const isResourceBuilding = (b) => {
+                if (!b || !b.building_type) return false;
+                const typeStr = b.building_type.toLowerCase();
+                return typeStr.includes('mine') || typeStr.includes('collector') || typeStr.includes('storage') || typeStr.includes('pump');
+            };
+
+            const allDefensiveIndices = [];
+            const allResourceIndices = [];
+            const allOtherIndices = [];
+            layout.forEach((b, idx) => {
+                if (idx === 0) return; // Town Hall handled separately
+                if (isDefensiveBuilding(b)) allDefensiveIndices.push(idx);
+                else if (isResourceBuilding(b)) allResourceIndices.push(idx);
+                else allOtherIndices.push(idx);
+            });
+
+            allDefensiveIndices.sort(() => Math.random() - 0.5);
+            allResourceIndices.sort(() => Math.random() - 0.5);
+            allOtherIndices.sort(() => Math.random() - 0.5);
+
+            // Prioritize structure destruction order based on specialized units deployed in battle
+            const hasGiant = gridDeployedTroops.some(t => (t.troop_type || '').toLowerCase() === 'giant');
+            const hasGoblin = gridDeployedTroops.some(t => (t.troop_type || '').toLowerCase() === 'goblin');
+            let orderedIndices = [];
+            if (hasGiant && hasGoblin) {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices];
+            } else if (hasGiant) {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices];
+            } else if (hasGoblin) {
+                orderedIndices = [...allResourceIndices, ...allDefensiveIndices, ...allOtherIndices];
+            } else {
+                orderedIndices = [...allDefensiveIndices, ...allResourceIndices, ...allOtherIndices].sort(() => Math.random() - 0.5);
+            }
+
+            const destroyedIndices = orderedIndices.slice(0, numDestroyed);
 
             setGridDeployedTroops(prev => prev.map((t, i) => {
-                const targetIdx = destroyedIndices.length > 0 ? destroyedIndices[i % destroyedIndices.length] : 0;
-                const b = layout[targetIdx];
+                const tType = (t.troop_type || '').toLowerCase();
+                let targetIdx;
+                
+                // Giant AI: Strictly targets defensive structures (Cannons, Archer Towers, Mortars) as long as any remain on the field
+                if (tType === 'giant' && allDefensiveIndices.length > 0) {
+                    targetIdx = allDefensiveIndices[i % allDefensiveIndices.length];
+                }
+                // Goblin AI: Strictly targets resource structures (Gold Mines, Elixir Collectors, Storages) as long as any remain
+                else if (tType === 'goblin' && allResourceIndices.length > 0) {
+                    targetIdx = allResourceIndices[i % allResourceIndices.length];
+                }
+                // Barbarian, Archer, Wizard AI: Engage available structures across the base
+                else if (destroyedIndices.length > 0) {
+                    targetIdx = destroyedIndices[i % destroyedIndices.length];
+                } else {
+                    targetIdx = 0;
+                }
+                
+                const b = layout[targetIdx] || layout[0];
                 const targetXPct = ((b.x_coords + ((b.width || 2) / 2)) / 25) * 100;
                 const targetYPct = ((b.y_coords + ((b.breadth || b.height || 2) / 2)) / 25) * 100;
                 return { ...t, targetXPct, targetYPct };
@@ -174,7 +229,7 @@ export default function BattleOverlay({ matchData, onClose, BUILDING_ASSETS, SHO
                 });
 
                 // Apply partial combat damage to surviving structures
-                const survivingIndices = indices.slice(numDestroyed);
+                const survivingIndices = orderedIndices.slice(numDestroyed);
                 survivingIndices.slice(0, 3).forEach((sIdx, i) => {
                     setTimeout(() => {
                         setBuildingHP(prev => {

@@ -18,7 +18,7 @@ func CheckOverlap(x1, y1, w1, h1 int32, x2, y2, w2, h2 int32) bool {
 
 func PurchaseBuilding(ctx context.Context, pool *pgxpool.Pool, pgPlayerID pgtype.UUID, req models.PurchaseBuildingRequest) (map[string]interface{}, int, error) {
 	queries := db.New(pool)
-	
+
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("Database error starting transaction")
